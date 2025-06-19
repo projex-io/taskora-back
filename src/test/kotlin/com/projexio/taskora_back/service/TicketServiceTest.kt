@@ -102,7 +102,6 @@ class TicketServiceTest {
     }
 
     @Test
-    @Disabled
     fun `this test should fail`(){
         assertEquals(true, false)
     }
