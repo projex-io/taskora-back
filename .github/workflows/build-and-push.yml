@@ -28,11 +28,6 @@ jobs:
       - name: Run tests
         run: ./gradlew test --no-daemon
 
-  build-and-push-docker:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
