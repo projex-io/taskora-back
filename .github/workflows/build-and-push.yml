@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+
 permissions:
   contents: read
   packages: write
@@ -11,39 +12,33 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Set up JDK
-        uses: actions/setup-java@v4
+    steps:
+      - uses: actions/checkout@v3
+
+      # Setup Java 21
+      - name: Setup Java 21
+        uses: actions/setup-java@v3
         with:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Grant execute permission to Gradle
-        run: chmod +x ./gradlew
-
+      # Build the project and generate the JAR
       - name: Build with Gradle
-        run: ./gradlew build --no-daemon
+        run: ./gradlew clean build --no-daemon
 
-  docker:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      packages: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
+      # Build the Docker image, en copiant le JAR généré
+      - name: Build Docker image
+        run: docker build -t ghcr.io/projex-io/taskora-back:${{ github.sha }} .
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      # Login to GitHub Container Registry (GHCR)
+      - name: Login to GHCR
+        uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Docker image
-        run: docker build -t ghcr.io/projex-io/taskora-back:${{ github.sha }} .
-
+      # Push the image
       - name: Push Docker image
         run: docker push ghcr.io/projex-io/taskora-back:${{ github.sha }}
