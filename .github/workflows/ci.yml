@@ -32,6 +32,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      - name: Pre-pull PostgreSQL image for Testcontainers
+        run: docker pull postgres:15-alpine
+
       - name: Build with Gradle
         run: ./gradlew clean build --no-daemon
 
