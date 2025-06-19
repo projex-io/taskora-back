@@ -50,3 +50,7 @@ allOpen {
 tasks.withType<Test> {
 	useJUnitPlatform()
 }
+
+tasks.withType<Jar> {
+	archiveFileName.set("app.jar")
+}
