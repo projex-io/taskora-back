@@ -1,5 +1,5 @@
 # Build stage
-FROM eclipse-temurin:21-jdk as build
+FROM eclipse-temurin:21-jdk AS build
 WORKDIR /app
 COPY . .
 RUN ./gradlew clean build --no-daemon
