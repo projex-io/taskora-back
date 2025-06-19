@@ -2,34 +2,40 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 permissions:
   contents: read
   packages: write
 
+
 jobs:
   build:
-    name: Build & Push Docker Image
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
           java-version: '21'
+          distribution: 'temurin'
 
       - name: Grant execute permission to Gradle
         run: chmod +x ./gradlew
 
-      - name: Build the app with Gradle
-        run: ./gradlew clean build --no-daemon
+      - name: Build with Gradle
+        run: ./gradlew build --no-daemon
+
+  docker:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -39,9 +45,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Docker image
-        run: |
-          docker build -t ghcr.io/${{ github.repository_owner }}/taskora-back:latest .
+        run: docker build -t ghcr.io/projex-io/taskora-back:${{ github.sha }} .
 
       - name: Push Docker image
-        run: |
-          docker push ghcr.io/${{ github.repository_owner }}/taskora-back:latest
+        run: docker push ghcr.io/projex-io/taskora-back:${{ github.sha }}
