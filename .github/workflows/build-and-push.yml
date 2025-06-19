@@ -1,44 +1,63 @@
 name: Build and Push Docker Image
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
-
-permissions:
-  contents: read
-  packages: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # Setup Java 21
-      - name: Setup Java 21
+      - name: Set up JDK 21
         uses: actions/setup-java@v3
         with:
-          java-version: '21'
-          distribution: 'temurin'
+          distribution: temurin
+          java-version: 21
 
-      # Build the project and generate the JAR
       - name: Build with Gradle
         run: ./gradlew clean build --no-daemon
 
-      # Build the Docker image, en copiant le JAR généré
-      - name: Build Docker image
-        run: docker build -t ghcr.io/projex-io/taskora-back:${{ github.sha }} .
+      - name: Run tests
+        run: ./gradlew test --no-daemon
 
-      # Login to GitHub Container Registry (GHCR)
-      - name: Login to GHCR
+  build-and-push-docker:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Push the image
+      - name: Get commit date and create tag
+        id: tag
+        run: |
+          # Extraire la date du commit (jjmmaaaa)
+          COMMIT_DATE=$(jq -r .head_commit.timestamp $GITHUB_EVENT_PATH | cut -d'T' -f1 | tr -d '-')
+          # Prendre les 7 premiers caractères du SHA
+          SHA_SHORT=${GITHUB_SHA::7}
+          # Extraire le nom de la branche (ex: main)
+          BRANCH=$(echo "${GITHUB_REF#refs/heads/}" | tr '/' '-')
+          TAG="${BRANCH}-${COMMIT_DATE}-${SHA_SHORT}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Build Docker image
+        run: docker build -t ghcr.io/${{ github.repository_owner }}/taskora-back:${{ steps.tag.outputs.tag }} .
+
       - name: Push Docker image
-        run: docker push ghcr.io/projex-io/taskora-back:${{ github.sha }}
+        run: docker push ghcr.io/${{ github.repository_owner }}/taskora-back:${{ steps.tag.outputs.tag }}
