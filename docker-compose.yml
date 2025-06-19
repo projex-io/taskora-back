@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:15
+    container_name: taskora-db
+    environment:
+      POSTGRES_DB: taskora
+      POSTGRES_USER: taskora_user
+      POSTGRES_PASSWORD: taskora_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - taskora-network
+
+volumes:
+  postgres_data:
+
+networks:
+  taskora-network:
