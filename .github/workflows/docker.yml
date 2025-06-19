@@ -3,6 +3,8 @@ name: Docker Image
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ] #Just for test purpose delete when its works
 
 jobs:
   docker-build:
