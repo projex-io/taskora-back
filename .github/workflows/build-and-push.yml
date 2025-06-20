@@ -30,9 +30,18 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew clean build --no-daemon
 
+      # Define custom Docker tag
+      - name: Define Docker Tag
+        id: generate_tag
+        run: |
+          SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
+          DATE=$(date +'%Y%m%d')
+          echo "TAG=dev-${DATE}-${SHORT_SHA}" >> $GITHUB_ENV
+
+
       # Build the Docker image, en copiant le JAR généré
       - name: Build Docker image
-        run: docker build -t ghcr.io/projex-io/taskora-back:${{ github.sha }} .
+        run: docker build -t ghcr.io/projex-io/taskora-back:${{ env.TAG }} .
 
       # Login to GitHub Container Registry (GHCR)
       - name: Login to GHCR
@@ -44,4 +53,4 @@ jobs:
 
       # Push the image
       - name: Push Docker image
-        run: docker push ghcr.io/projex-io/taskora-back:${{ github.sha }}
+        run: docker push ghcr.io/projex-io/taskora-back:${{ env.TAG }}
