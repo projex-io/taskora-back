@@ -1,0 +1,56 @@
+name: Auto-label Pull Request based on Commit Message
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize # Quand une PR est mise à jour avec de nouveaux commits
+
+permissions:
+  contents: read
+  pull-requests: write # Donne la permission de gérer les PRs, notamment d'ajouter des labels
+
+jobs:
+  auto_label:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Étape 1 : Cloner le dépôt avec toutes les métadonnées Git
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Clone complet requis pour utiliser les commandes git
+
+      # Étape 2 : Vérifie et extrait les labels depuis le message du dernier commit
+      - name: Check commit message and extract labels
+        id: extract-labels
+        run: |
+          echo "Analyzing the latest commit message..."
+
+          # Récupérer le message du dernier commit
+          LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          echo "Last Commit Message: $LAST_COMMIT_MESSAGE"
+
+          # Extraire les mots-clés qui commencent par "#"
+          LABELS=$(echo "$LAST_COMMIT_MESSAGE" | grep -o "#[a-zA-Z0-9_-]*" | tr -d "#")
+          echo "Extracted Labels: $LABELS"
+
+          # Sauvegarder dans le fichier d'environnement GitHub pour l'utiliser dans les étapes suivantes
+          echo "labels=$LABELS" >> $GITHUB_ENV
+
+      # Étape 3 : Associer les labels extraits à la PR
+      - name: Add labels to the Pull Request
+        if: env.labels != ''
+        run: |
+          echo "Adding labels to the Pull Request: $LABELS"
+
+          # Construire le format JSON attendu par l'API GitHub
+          LABEL_ARRAY=$(echo "$LABELS" | jq -R -s 'split("\n")[:-1]')
+          echo "{ \"labels\": $LABEL_ARRAY }" > labels.json
+          cat labels.json
+
+          # Utiliser l'API REST pour ajouter les labels à la PR
+          curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d @labels.json \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels"
