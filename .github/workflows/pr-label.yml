@@ -1,0 +1,33 @@
+name: Run workflow based on PR label
+
+on:
+  pull_request:
+    types:
+      - labeled   # Déclenchement lorsque vous ajoutez un label à une PR.
+
+jobs:
+  check_label_and_run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check PR labels
+        run: |
+          echo "Fetching PR labels..."
+          LABELS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels")
+
+          echo "Labels found: $LABELS"
+
+          # Vérifie si un label spécifique est présent
+          if [[ "$LABELS" =~ "question" ]]; then
+            echo "The label 'question' is present. Running the workflow!"
+            echo "run=true" >> $GITHUB_ENV
+          else
+            echo "Label 'question' not found. Skipping."
+            echo "run=false" >> $GITHUB_ENV
+          fi
+
+      - name: Run conditionally
+        if: env.run == 'true'
+        run: echo "The workflow is executed because the label is present."
