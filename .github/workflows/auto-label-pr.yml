@@ -15,41 +15,45 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Étape 1 : Cloner le dépôt avec toutes les métadonnées Git
+      # Étape 1 : Cloner le dépôt (inclus dans toutes les branches associées à la PR)
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # Clone complet requis pour utiliser les commandes git
+          fetch-depth: 0 # Clone complet requis pour accéder aux commits
 
-      # Étape 2 : Vérifie et extrait les labels depuis le message du dernier commit
-      - name: Check commit message and extract labels
+      # Étape 2 : Analyser le message du dernier commit spécifique à la branche source
+      - name: Extract labels from source branch commit
         id: extract-labels
         run: |
-          echo "Analyzing the latest commit message..."
+          echo "Analyzing the latest commit from the source branch..."
 
-          # Récupérer le message du dernier commit
-          LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          # Récupérer le hash du HEAD de la branche source
+          COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
+          echo "Source Branch Commit SHA: $COMMIT_SHA"
+
+          # Récupérer le message lié au commit
+          LAST_COMMIT_MESSAGE=$(git show --pretty=format:%s --no-patch $COMMIT_SHA)
           echo "Last Commit Message: $LAST_COMMIT_MESSAGE"
 
-          # Extraire les mots-clés qui commencent par "#"
+          # Extraire les labels (motifs commençant par '#')
           LABELS=$(echo "$LAST_COMMIT_MESSAGE" | grep -o "#[a-zA-Z0-9_-]*" | tr -d "#")
           echo "Extracted Labels: $LABELS"
 
-          # Sauvegarder dans le fichier d'environnement GitHub pour l'utiliser dans les étapes suivantes
+          # Sauvegarder les labels extraits dans l'environnement GitHub
           echo "labels=$LABELS" >> $GITHUB_ENV
 
-      # Étape 3 : Associer les labels extraits à la PR
+      # Étape 3 : Ajouter les labels extraits à la PR
       - name: Add labels to the Pull Request
         if: env.labels != ''
         run: |
           echo "Adding labels to the Pull Request: $LABELS"
 
-          # Construire le format JSON attendu par l'API GitHub
+          # Construire un tableau JSON attendu par l'API GitHub
           LABEL_ARRAY=$(echo "$LABELS" | jq -R -s 'split("\n")[:-1]')
           echo "{ \"labels\": $LABEL_ARRAY }" > labels.json
           cat labels.json
 
-          # Utiliser l'API REST pour ajouter les labels à la PR
+          # Utiliser l'API GitHub REST v3 pour ajouter les labels
           curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d @labels.json \
