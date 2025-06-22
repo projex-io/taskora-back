@@ -1,0 +1,86 @@
+name: Auto-label Pull Request based on Commit Message
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  auto_label:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Extract labels from source branch commit
+        id: extract-labels
+        run: |
+          echo "Analyzing the latest commit from the source branch..."
+          COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
+          echo "Source Branch Commit SHA: $COMMIT_SHA"
+
+          LAST_COMMIT_MESSAGE=$(git show --pretty=format:%s --no-patch $COMMIT_SHA)
+          echo "Last Commit Message: $LAST_COMMIT_MESSAGE"
+
+          # Extraire les labels (sans #, séparés par des virgules)
+          LABELS=$(echo "$LAST_COMMIT_MESSAGE" | grep -o "#[a-zA-Z0-9_-]*" | tr -d "#" | xargs | sed 's/ /,/g')
+
+          if [ -z "$LABELS" ]; then
+            echo "No valid labels found. Skipping label application."
+            echo "labels=" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          echo "Extracted Labels: $LABELS"
+          echo "labels=$LABELS" >> $GITHUB_ENV
+
+      - name: Add labels to the Pull Request
+        if: env.labels != ''
+        run: |
+          echo "Adding labels to the Pull Request: $labels"
+
+          # Nettoyage des retours à la ligne et des espaces parasites
+          CLEANED_LABELS=$(echo "$labels" | tr -d '\n\r' | sed 's/ *, */,/g' | sed 's/,$//')
+
+          # Convertir en tableau bash
+          IFS=',' read -r -a INPUT_LABELS <<< "$CLEANED_LABELS"
+
+          # Récupérer tous les labels du repo
+          EXISTING_LABELS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/labels?per_page=100" | jq -r '.[].name')
+
+          # Créer un tableau filtré
+          FILTERED_LABELS=()
+          for label in "${INPUT_LABELS[@]}"; do
+            if echo "$EXISTING_LABELS" | grep -Fxq "$label"; then
+              FILTERED_LABELS+=("\"$label\"")
+            else
+              echo "Label '$label' not found in repository – skipping."
+            fi
+          done
+
+          # Ne rien faire si aucun label n'est valide
+          if [ ${#FILTERED_LABELS[@]} -eq 0 ]; then
+            echo "No valid labels to apply."
+            exit 0
+          fi
+
+          # Générer JSON final
+          LABEL_JSON="{ \"labels\": [$(IFS=,; echo "${FILTERED_LABELS[*]}")] }"
+          echo "$LABEL_JSON" > labels.json
+          cat labels.json
+
+          # Envoyer à l'API
+          curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d @labels.json \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels"
