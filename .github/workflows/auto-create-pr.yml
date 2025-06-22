@@ -4,6 +4,7 @@ on:
   push:
     branches-ignore:
       - main
+      - dev
 
 permissions:
   contents: write
@@ -66,15 +67,17 @@ jobs:
           fi
 
       - name: Create PR if none exists
+        id: create_pr
         if: steps.pr_check.outputs.pr_exists == 'false'
         run: |
           BRANCH_NAME="${{ steps.get_branch.outputs.branch }}"
           TITLE="${{ steps.pr_vars.outputs.pr_title }}"
           BODY="${{ steps.pr_vars.outputs.pr_body }}"
+          AUTHOR="${{ github.actor }}"
 
           echo "Creating PR for branch $BRANCH_NAME with title: $TITLE"
 
-          curl -s -X POST \
+          PR_RESPONSE=$(curl -s -X POST \
             -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d "$(jq -n \
@@ -83,4 +86,23 @@ jobs:
               --arg base "main" \
               --arg body "$BODY" \
               '{title: $title, head: $head, base: $base, body: $body}')" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls"
+            "https://api.github.com/repos/${{ github.repository }}/pulls")
+
+          PR_NUMBER=$(echo "$PR_RESPONSE" | jq -r .number)
+          echo "Created PR #$PR_NUMBER"
+
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+      - name: Assign PR to branch author
+        if: steps.pr_check.outputs.pr_exists == 'false'
+        run: |
+          PR_NUMBER="${{ steps.create_pr.outputs.pr_number }}"
+          AUTHOR="${{ github.actor }}"
+
+          echo "Assigning PR #$PR_NUMBER to @$AUTHOR"
+
+          curl -s -X POST \
+            -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"assignees\": [\"$AUTHOR\"]}" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER"
