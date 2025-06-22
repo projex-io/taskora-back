@@ -1,0 +1,40 @@
+name: Auto-create Pull Request on new branch
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - dev
+    # Crée une PR uniquement si la branche n’existait pas encore
+    # Pas possible de détecter explicitement "new branch", donc on ajoute une vérif ensuite
+
+jobs:
+  create_pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check if this is the first push to the branch
+        id: branch_check
+        run: |
+          if [ "${{ github.event.created }}" = "true" ]; then
+            echo "new_branch=true" >> $GITHUB_OUTPUT
+          else
+            echo "new_branch=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.branch_check.outputs.new_branch == 'true'
+        run: |
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          echo "New branch detected: $BRANCH_NAME"
+
+          # Appeler l’API pour créer la PR
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg title "Auto PR from $BRANCH_NAME" \
+              --arg head "$BRANCH_NAME" \
+              --arg base "main" \
+              '{title: $title, head: $head, base: $base, body: "PR automatique créée depuis la branche."}')" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls"
