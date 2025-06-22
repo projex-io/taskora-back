@@ -4,6 +4,7 @@ on:
   push:
     branches-ignore:
       - main
+      - dev
 
 permissions:
   contents: write
@@ -17,6 +18,33 @@ jobs:
       - name: Get branch name
         id: get_branch
         run: echo "branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+
+      - name: Set PR title and body variables
+        id: pr_vars
+        run: |
+          BRANCH_NAME="${{ steps.get_branch.outputs.branch }}"
+
+          if [[ "$BRANCH_NAME" == feat/* ]]; then
+            PREFIX="🚀"
+            RAW_NAME="${BRANCH_NAME#feat/}"
+          elif [[ "$BRANCH_NAME" == fix/* ]]; then
+            PREFIX="🐛"
+            RAW_NAME="${BRANCH_NAME#fix/}"
+          else
+            PREFIX=""
+            RAW_NAME="$BRANCH_NAME"
+          fi
+
+          TITLE_TEXT=$(echo "$RAW_NAME" | tr '-' ' ')
+
+          # Forcer la première lettre en majuscule
+          TITLE_TEXT="$(echo "$TITLE_TEXT" | sed 's/^./\u&/')"
+
+          PR_TITLE="$PREFIX $TITLE_TEXT"
+          PR_BODY="PR automatique créée depuis la branche $BRANCH_NAME."
+
+          echo "pr_title=$PR_TITLE" >> $GITHUB_OUTPUT
+          echo "pr_body=$PR_BODY" >> $GITHUB_OUTPUT
 
       - name: Check if PR already exists
         id: pr_check
@@ -40,14 +68,18 @@ jobs:
         if: steps.pr_check.outputs.pr_exists == 'false'
         run: |
           BRANCH_NAME="${{ steps.get_branch.outputs.branch }}"
-          echo "Creating PR for branch $BRANCH_NAME"
+          TITLE="${{ steps.pr_vars.outputs.pr_title }}"
+          BODY="${{ steps.pr_vars.outputs.pr_body }}"
+
+          echo "Creating PR for branch $BRANCH_NAME with title: $TITLE"
 
           curl -s -X POST \
             -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d "$(jq -n \
-              --arg title "Auto PR from $BRANCH_NAME" \
+              --arg title "$TITLE" \
               --arg head "$BRANCH_NAME" \
               --arg base "main" \
-              '{title: $title, head: $head, base: $base, body: "PR automatique créée depuis la branche."}')" \
+              --arg body "$BODY" \
+              '{title: $title, head: $head, base: $base, body: $body}')" \
             "https://api.github.com/repos/${{ github.repository }}/pulls"
