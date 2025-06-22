@@ -51,11 +51,35 @@ jobs:
           # Nettoyage des retours à la ligne et des espaces parasites
           CLEANED_LABELS=$(echo "$labels" | tr -d '\n\r' | sed 's/ *, */,/g' | sed 's/,$//')
 
-          # Générer un tableau JSON propre sans trim() (version jq compatible)
-          LABEL_ARRAY=$(echo "$CLEANED_LABELS" | jq -R -s 'split(",") | map(sub("^\\s+";"") | sub("\\s+$";"")) | map(select(length > 0))')
-          echo "{ \"labels\": $LABEL_ARRAY }" > labels.json
+          # Convertir en tableau bash
+          IFS=',' read -r -a INPUT_LABELS <<< "$CLEANED_LABELS"
+
+          # Récupérer tous les labels du repo
+          EXISTING_LABELS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/labels?per_page=100" | jq -r '.[].name')
+
+          # Créer un tableau filtré
+          FILTERED_LABELS=()
+          for label in "${INPUT_LABELS[@]}"; do
+            if echo "$EXISTING_LABELS" | grep -Fxq "$label"; then
+              FILTERED_LABELS+=("\"$label\"")
+            else
+              echo "Label '$label' not found in repository – skipping."
+            fi
+          done
+
+          # Ne rien faire si aucun label n'est valide
+          if [ ${#FILTERED_LABELS[@]} -eq 0 ]; then
+            echo "No valid labels to apply."
+            exit 0
+          fi
+
+          # Générer JSON final
+          LABEL_JSON="{ \"labels\": [$(IFS=,; echo "${FILTERED_LABELS[*]}")] }"
+          echo "$LABEL_JSON" > labels.json
           cat labels.json
 
+          # Envoyer à l'API
           curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d @labels.json \
