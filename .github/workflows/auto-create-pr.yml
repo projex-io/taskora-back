@@ -19,24 +19,24 @@ jobs:
         id: get_branch
         run: echo "branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
 
-      - name: Set PR title and body variables
+      - name: Set PR title, body and label
         id: pr_vars
         run: |
           BRANCH_NAME="${{ steps.get_branch.outputs.branch }}"
 
           case "$BRANCH_NAME" in
-            feat/*)     PREFIX="🚀"; RAW_NAME="${BRANCH_NAME#feat/}" ;;
-            fix/*)      PREFIX="🐛"; RAW_NAME="${BRANCH_NAME#fix/}" ;;
-            chore/*)    PREFIX="🔧"; RAW_NAME="${BRANCH_NAME#chore/}" ;;
-            docs/*)     PREFIX="📚"; RAW_NAME="${BRANCH_NAME#docs/}" ;;
-            refactor/*) PREFIX="♻️"; RAW_NAME="${BRANCH_NAME#refactor/}" ;;
-            test/*)     PREFIX="✅"; RAW_NAME="${BRANCH_NAME#test/}" ;;
-            ci/*)       PREFIX="🔄"; RAW_NAME="${BRANCH_NAME#ci/}" ;;
-            perf/*)     PREFIX="⚡"; RAW_NAME="${BRANCH_NAME#perf/}" ;;
-            style/*)    PREFIX="💄"; RAW_NAME="${BRANCH_NAME#style/}" ;;
-            build/*)    PREFIX="🛠️"; RAW_NAME="${BRANCH_NAME#build/}" ;;
-            hotfix/*)   PREFIX="🔥"; RAW_NAME="${BRANCH_NAME#hotfix/}" ;;
-            *)          PREFIX=""; RAW_NAME="$BRANCH_NAME" ;;
+            feat/*)     PREFIX="🚀"; RAW_NAME="${BRANCH_NAME#feat/}";     LABEL="feature" ;;
+            fix/*)      PREFIX="🐛"; RAW_NAME="${BRANCH_NAME#fix/}";      LABEL="bug" ;;
+            chore/*)    PREFIX="🔧"; RAW_NAME="${BRANCH_NAME#chore/}";    LABEL="chore" ;;
+            docs/*)     PREFIX="📚"; RAW_NAME="${BRANCH_NAME#docs/}";     LABEL="documentation" ;;
+            refactor/*) PREFIX="♻️"; RAW_NAME="${BRANCH_NAME#refactor/}"; LABEL="refactor" ;;
+            test/*)     PREFIX="✅"; RAW_NAME="${BRANCH_NAME#test/}";     LABEL="test" ;;
+            ci/*)       PREFIX="🔄"; RAW_NAME="${BRANCH_NAME#ci/}";       LABEL="ci" ;;
+            perf/*)     PREFIX="⚡"; RAW_NAME="${BRANCH_NAME#perf/}";     LABEL="performance" ;;
+            style/*)    PREFIX="💄"; RAW_NAME="${BRANCH_NAME#style/}";    LABEL="style" ;;
+            build/*)    PREFIX="🛠️"; RAW_NAME="${BRANCH_NAME#build/}";   LABEL="build" ;;
+            hotfix/*)   PREFIX="🔥"; RAW_NAME="${BRANCH_NAME#hotfix/}";   LABEL="hotfix" ;;
+            *)          PREFIX=""; RAW_NAME="$BRANCH_NAME";               LABEL="" ;;
           esac
 
           TITLE_TEXT=$(echo "$RAW_NAME" | tr '-' ' ')
@@ -47,19 +47,16 @@ jobs:
 
           echo "pr_title=$PR_TITLE" >> $GITHUB_OUTPUT
           echo "pr_body=$PR_BODY" >> $GITHUB_OUTPUT
+          echo "label=$LABEL" >> $GITHUB_OUTPUT
 
       - name: Check if PR already exists
         id: pr_check
         run: |
           BRANCH_NAME="${{ steps.get_branch.outputs.branch }}"
-          echo "Checking if a PR exists from branch: $BRANCH_NAME"
-
           PRS=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:$BRANCH_NAME&base=main&state=open")
-
           PR_COUNT=$(echo "$PRS" | jq 'length')
 
-          echo "Found $PR_COUNT open PR(s) from branch $BRANCH_NAME"
           if [ "$PR_COUNT" -gt 0 ]; then
             echo "pr_exists=true" >> $GITHUB_OUTPUT
           else
@@ -73,9 +70,6 @@ jobs:
           BRANCH_NAME="${{ steps.get_branch.outputs.branch }}"
           TITLE="${{ steps.pr_vars.outputs.pr_title }}"
           BODY="${{ steps.pr_vars.outputs.pr_body }}"
-          AUTHOR="${{ github.actor }}"
-
-          echo "Creating PR for branch $BRANCH_NAME with title: $TITLE"
 
           PR_RESPONSE=$(curl -s -X POST \
             -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
@@ -89,8 +83,6 @@ jobs:
             "https://api.github.com/repos/${{ github.repository }}/pulls")
 
           PR_NUMBER=$(echo "$PR_RESPONSE" | jq -r .number)
-          echo "Created PR #$PR_NUMBER"
-
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
 
       - name: Assign PR to branch author
@@ -99,10 +91,20 @@ jobs:
           PR_NUMBER="${{ steps.create_pr.outputs.pr_number }}"
           AUTHOR="${{ github.actor }}"
 
-          echo "Assigning PR #$PR_NUMBER to @$AUTHOR"
-
           curl -s -X POST \
             -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d "{\"assignees\": [\"$AUTHOR\"]}" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER"
+
+      - name: Add label to PR
+        if: steps.pr_check.outputs.pr_exists == 'false' && steps.pr_vars.outputs.label != ''
+        run: |
+          PR_NUMBER="${{ steps.create_pr.outputs.pr_number }}"
+          LABEL="${{ steps.pr_vars.outputs.label }}"
+
+          curl -s -X POST \
+            -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"labels\": [\"$LABEL\"]}" \
             "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER"
