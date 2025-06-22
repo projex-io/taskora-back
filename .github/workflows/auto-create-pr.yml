@@ -23,24 +23,26 @@ jobs:
         run: |
           BRANCH_NAME="${{ steps.get_branch.outputs.branch }}"
 
-          if [[ "$BRANCH_NAME" == feat/* ]]; then
-            PREFIX="🚀"
-            RAW_NAME="${BRANCH_NAME#feat/}"
-          elif [[ "$BRANCH_NAME" == fix/* ]]; then
-            PREFIX="🐛"
-            RAW_NAME="${BRANCH_NAME#fix/}"
-          else
-            PREFIX=""
-            RAW_NAME="$BRANCH_NAME"
-          fi
+          case "$BRANCH_NAME" in
+            feat/*)     PREFIX="🚀"; RAW_NAME="${BRANCH_NAME#feat/}" ;;
+            fix/*)      PREFIX="🐛"; RAW_NAME="${BRANCH_NAME#fix/}" ;;
+            chore/*)    PREFIX="🔧"; RAW_NAME="${BRANCH_NAME#chore/}" ;;
+            docs/*)     PREFIX="📚"; RAW_NAME="${BRANCH_NAME#docs/}" ;;
+            refactor/*) PREFIX="♻️"; RAW_NAME="${BRANCH_NAME#refactor/}" ;;
+            test/*)     PREFIX="✅"; RAW_NAME="${BRANCH_NAME#test/}" ;;
+            ci/*)       PREFIX="🔄"; RAW_NAME="${BRANCH_NAME#ci/}" ;;
+            perf/*)     PREFIX="⚡"; RAW_NAME="${BRANCH_NAME#perf/}" ;;
+            style/*)    PREFIX="💄"; RAW_NAME="${BRANCH_NAME#style/}" ;;
+            build/*)    PREFIX="🛠️"; RAW_NAME="${BRANCH_NAME#build/}" ;;
+            hotfix/*)   PREFIX="🔥"; RAW_NAME="${BRANCH_NAME#hotfix/}" ;;
+            *)          PREFIX=""; RAW_NAME="$BRANCH_NAME" ;;
+          esac
 
           TITLE_TEXT=$(echo "$RAW_NAME" | tr '-' ' ')
-
-          # Forcer la première lettre en majuscule
           TITLE_TEXT="$(echo "$TITLE_TEXT" | sed 's/^./\u&/')"
 
           PR_TITLE="$PREFIX $TITLE_TEXT"
-          PR_BODY="PR automatique créée depuis la branche $BRANCH_NAME."
+          PR_BODY="PR automatique créée depuis la branche \`$BRANCH_NAME\`."
 
           echo "pr_title=$PR_TITLE" >> $GITHUB_OUTPUT
           echo "pr_body=$PR_BODY" >> $GITHUB_OUTPUT
