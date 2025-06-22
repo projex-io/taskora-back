@@ -48,10 +48,11 @@ jobs:
         run: |
           echo "Adding labels to the Pull Request: $labels"
 
-          # Supprimer les espaces/sauts de ligne résiduels
-          CLEANED_LABELS=$(echo "$labels" | tr -d '\n' | tr -d '\r' | sed 's/ *, */,/g' | sed 's/,$//')
+          # Nettoyage des retours à la ligne et des espaces parasites
+          CLEANED_LABELS=$(echo "$labels" | tr -d '\n\r' | sed 's/ *, */,/g' | sed 's/,$//')
 
-          LABEL_ARRAY=$(echo "$CLEANED_LABELS" | jq -R -s 'split(",") | map(. | trim) | map(select(length > 0))')
+          # Générer un tableau JSON propre sans trim() (version jq compatible)
+          LABEL_ARRAY=$(echo "$CLEANED_LABELS" | jq -R -s 'split(",") | map(sub("^\\s+";"") | sub("\\s+$";"")) | map(select(length > 0))')
           echo "{ \"labels\": $LABEL_ARRAY }" > labels.json
           cat labels.json
 
