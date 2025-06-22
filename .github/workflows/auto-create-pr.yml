@@ -30,7 +30,7 @@ jobs:
           echo "New branch detected: $BRANCH_NAME"
 
           curl -s -X POST \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d "$(jq -n \
               --arg title "Auto PR from $BRANCH_NAME" \
