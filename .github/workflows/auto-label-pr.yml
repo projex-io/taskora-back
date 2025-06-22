@@ -47,8 +47,11 @@ jobs:
         if: env.labels != ''
         run: |
           echo "Adding labels to the Pull Request: $labels"
-          
-          LABEL_ARRAY=$(echo "$labels" | jq -R -s 'split(",") | map(select(length > 0))')
+
+          # Supprimer les espaces/sauts de ligne résiduels
+          CLEANED_LABELS=$(echo "$labels" | tr -d '\n' | tr -d '\r' | sed 's/ *, */,/g' | sed 's/,$//')
+
+          LABEL_ARRAY=$(echo "$CLEANED_LABELS" | jq -R -s 'split(",") | map(. | trim) | map(select(length > 0))')
           echo "{ \"labels\": $LABEL_ARRAY }" > labels.json
           cat labels.json
 
