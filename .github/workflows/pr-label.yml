@@ -12,7 +12,7 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Check PR labels and set action
+      - name: Check PR labels and set actions
         run: |
           LABELS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github+json" \
@@ -21,36 +21,62 @@ jobs:
 
           echo "Labels found: $LABELS"
 
-          run_action="none"
+          # Initialisation à false
+          run_question=false
+          run_bug=false
+          run_feature=false
+          run_no_draft=false
+          run_refactor=false
 
           while IFS= read -r label; do
             case "$label" in
-              question) echo "Found label 'question'"; run_action="question" ;;
-              bug) echo "Found label 'bug'"; run_action="bug" ;;
-              feature) echo "Found label 'feature'"; run_action="feature" ;;
-              no-draft) echo "Found label 'no-draft'"; run_action="no-draft" ;;
-              refactor) echo "Found label 'refactor'"; run_action="refactor" ;;
+              question) 
+                echo "Found label 'question'"
+                run_question=true
+                ;;
+              bug) 
+                echo "Found label 'bug'"
+                run_bug=true
+                ;;
+              feature) 
+                echo "Found label 'feature'"
+                run_feature=true
+                ;;
+              no-draft) 
+                echo "Found label 'no-draft'"
+                run_no_draft=true
+                ;;
+              refactor) 
+                echo "Found label 'refactor'"
+                run_refactor=true
+                ;;
             esac
           done <<< "$LABELS"
 
-          echo "run_action=$run_action" >> $GITHUB_ENV
+          # Exporter les variables d'environnement pour les steps suivants
+          echo "run_question=$run_question" >> $GITHUB_ENV
+          echo "run_bug=$run_bug" >> $GITHUB_ENV
+          echo "run_feature=$run_feature" >> $GITHUB_ENV
+          echo "run_no_draft=$run_no_draft" >> $GITHUB_ENV
+          echo "run_refactor=$run_refactor" >> $GITHUB_ENV
+      
 
       - name: Run task for 'question' label
-        if: env.run_action == 'question'
+        if: env.run_question == 'true'
         run: echo "Executing task for 'question' label"
 
       - name: Run task for 'bug' label
-        if: env.run_action == 'bug'
+        if: env.run_bug == 'true'
         run: echo "Executing task for 'bug' label"
 
       - name: Run task for 'feature' label
-        if: env.run_action == 'feature'
+        if: env.run_feature == 'true'
         run: echo "Executing task for 'feature' label"
 
       - name: Run task for 'no-draft' label
-        if: env.run_action == 'no-draft'
+        if: env.run_no_draft == 'true'
         run: echo "Executing task for 'no-draft' label"
 
       - name: Run task for 'refactor' label
-        if: env.run_action == 'refactor'
+        if: env.run_refactor == 'true'
         run: echo "Executing task for 'refactor' label"
