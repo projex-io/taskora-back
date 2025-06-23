@@ -26,45 +26,30 @@ jobs:
 
           echo "Labels found: $LABELS"
 
-          # Initialisation à false
           run_question=false
           run_bug=false
           run_feature=false
           run_no_draft=false
           run_refactor=false
+          run_auto_merge=false
 
           while IFS= read -r label; do
             case "$label" in
-              question) 
-                echo "Found label 'question'"
-                run_question=true
-                ;;
-              bug) 
-                echo "Found label 'bug'"
-                run_bug=true
-                ;;
-              feature) 
-                echo "Found label 'feature'"
-                run_feature=true
-                ;;
-              no-draft) 
-                echo "Found label 'no-draft'"
-                run_no_draft=true
-                ;;
-              refactor) 
-                echo "Found label 'refactor'"
-                run_refactor=true
-                ;;
+              question) run_question=true ;;
+              bug) run_bug=true ;;
+              feature) run_feature=true ;;
+              no-draft) run_no_draft=true ;;
+              refactor) run_refactor=true ;;
+              auto-merge) run_auto_merge=true ;;
             esac
           done <<< "$LABELS"
 
-          # Exporter les variables d'environnement pour les steps suivants
           echo "run_question=$run_question" >> $GITHUB_ENV
           echo "run_bug=$run_bug" >> $GITHUB_ENV
           echo "run_feature=$run_feature" >> $GITHUB_ENV
           echo "run_no_draft=$run_no_draft" >> $GITHUB_ENV
           echo "run_refactor=$run_refactor" >> $GITHUB_ENV
-      
+          echo "run_auto_merge=$run_auto_merge" >> $GITHUB_ENV
 
       - name: Run task for 'question' label
         if: env.run_question == 'true'
@@ -87,3 +72,11 @@ jobs:
       - name: Run task for 'refactor' label
         if: env.run_refactor == 'true'
         run: echo "Executing task for 'refactor' label"
+
+      - name: Auto merge PR if 'auto-merge' label present and conditions met
+        if: env.run_auto_merge == 'true'
+        run: |
+          echo "Attempting to auto-merge PR #${{ github.event.pull_request.number }}..."
+          gh pr merge ${{ github.event.pull_request.number }} --squash --auto --delete-branch
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
