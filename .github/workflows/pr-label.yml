@@ -3,6 +3,8 @@ name: Run workflow based on PR label
 on:
   pull_request:
     types:
+      - opened
+      - synchronize
       - labeled
 
 jobs:
