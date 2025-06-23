@@ -1,3 +1,4 @@
+name-template: '🚧 Upcoming Release'
 tag-template: 'v$NEXT_VERSION'
 change-template: '- $TITLE (#$NUMBER) by @$AUTHOR'
 change-title-escapes: '-'
@@ -25,18 +26,4 @@ categories:
       - documentation
   - title: '⚡ Performances'
     labels:
-      - documentation
-
-version-resolver:
-  major:
-    labels:
-      - breaking-change
-  minor:
-    labels:
-      - feature
-  patch:
-    labels:
-      - bug
-      - refactor
-      - documentation
-  default: patch
+      - performance
