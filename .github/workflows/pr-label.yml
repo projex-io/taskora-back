@@ -76,7 +76,7 @@ jobs:
         run: echo "Executing task for 'feature' label"
 
       - name: Mark PR as ready (remove draft)
-        if: env.run_no_draft == 'no-draft'
+        if: env.run_no_draft == 'true'
         run: gh pr ready --pr ${{ github.event.pull_request.number }}
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
