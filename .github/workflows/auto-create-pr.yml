@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GH_TOKEN: ${{ secrets.PAT }}  # Ton PAT avec droits PR
+      GH_TOKEN: ${{ secrets.PAT_TOKEN }}  # Ton PAT avec droits PR
 
     steps:
       - name: Checkout code
