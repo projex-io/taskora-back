@@ -1,76 +1,79 @@
-name: Auto Create Pull Request
+name: Auto Create Pull Request on Push
 
 on:
   push:
     branches-ignore:
       - main
-      - dev
 
 permissions:
   contents: read
   pull-requests: write
-  issues: write
 
 jobs:
-  auto_create_pr:
+  create_pr:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
       - name: Extract branch name
         id: get_branch
         run: |
-          echo "branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
       - name: Check if PR already exists
         id: pr_check
         run: |
           BRANCH_NAME="${{ steps.get_branch.outputs.branch }}"
-          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:$BRANCH_NAME&state=open")
-          COUNT=$(echo "$RESPONSE" | jq length)
-          if [ "$COUNT" -gt 0 ]; then
-            echo "PR already exists"
-            echo "pr_exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "No PR exists"
-            echo "pr_exists=false" >> $GITHUB_OUTPUT
-          fi
+          PRS=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+            https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:$BRANCH_NAME)
+          PR_EXISTS=$(echo "$PRS" | jq 'length > 0')
+          echo "pr_exists=$PR_EXISTS" >> $GITHUB_OUTPUT
 
-      - name: Define PR title, body, label
+      - name: Define PR title and body
         id: pr_vars
         run: |
           BRANCH_NAME="${{ steps.get_branch.outputs.branch }}"
-          PREFIX=$(echo "$BRANCH_NAME" | cut -d '/' -f1)
-          NAME=$(echo "$BRANCH_NAME" | cut -d '/' -f2- | sed 's/-/ /g')
-          TITLE_EMOJI=""
-          LABEL=""
+
+          PREFIX=$(echo "$BRANCH_NAME" | cut -d'/' -f1)
+          REST=$(echo "$BRANCH_NAME" | cut -d'/' -f2-)
 
           case "$PREFIX" in
-            feat) TITLE_EMOJI="🚀"; LABEL="feature" ;;
-            fix) TITLE_EMOJI="🐛"; LABEL="bug" ;;
-            build) TITLE_EMOJI="🛠️"; LABEL="build" ;;
-            chore) TITLE_EMOJI="🧹"; LABEL="chore" ;;
-            refactor) TITLE_EMOJI="🔨"; LABEL="refactor" ;;
-            docs) TITLE_EMOJI="📚"; LABEL="documentation" ;;
-            test) TITLE_EMOJI="✅"; LABEL="test" ;;
-            style) TITLE_EMOJI="🎨"; LABEL="style" ;;
-            *) TITLE_EMOJI="📦"; LABEL="other" ;;
+            feat)
+              TITLE="🚀 $(echo "$REST" | sed -E 's/-/ /g' | sed -E 's/^(.)/\U\1/')"
+              LABEL="feature"
+              ;;
+            fix)
+              TITLE="🐛 $(echo "$REST" | sed -E 's/-/ /g' | sed -E 's/^(.)/\U\1/')"
+              LABEL="bug"
+              ;;
+            build)
+              TITLE="🛠️ $(echo "$REST" | sed -E 's/-/ /g' | sed -E 's/^(.)/\U\1/')"
+              LABEL="build"
+              ;;
+            chore)
+              TITLE="🧹 $(echo "$REST" | sed -E 's/-/ /g' | sed -E 's/^(.)/\U\1/')"
+              LABEL="chore"
+              ;;
+            docs)
+              TITLE="📚 $(echo "$REST" | sed -E 's/-/ /g' | sed -E 's/^(.)/\U\1/')"
+              LABEL="documentation"
+              ;;
+            test)
+              TITLE="🧪 $(echo "$REST" | sed -E 's/-/ /g' | sed -E 's/^(.)/\U\1/')"
+              LABEL="test"
+              ;;
+            *)
+              TITLE="✨ $(echo "$REST" | sed -E 's/-/ /g' | sed -E 's/^(.)/\U\1/')"
+              LABEL="enhancement"
+              ;;
           esac
 
-          # Capitalize first letter of name
-          FORMATTED_NAME="$(echo "${NAME:0:1}" | tr '[:lower:]' '[:upper:]')${NAME:1}"
-          TITLE="$TITLE_EMOJI $FORMATTED_NAME"
           BODY="PR automatique créée depuis la branche \`$BRANCH_NAME\`."
-
           echo "pr_title=$TITLE" >> $GITHUB_OUTPUT
           echo "pr_body=$BODY" >> $GITHUB_OUTPUT
           echo "label=$LABEL" >> $GITHUB_OUTPUT
 
       - name: Create Pull Request
-        id: create_pr
         if: steps.pr_check.outputs.pr_exists == 'false'
         run: |
           BRANCH_NAME="${{ steps.get_branch.outputs.branch }}"
@@ -98,11 +101,11 @@ jobs:
 
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
 
-      - name: Add label to PR
-        if: steps.create_pr.outputs.pr_number != ''
+      - name: Add Label to PR
+        if: steps.pr_check.outputs.pr_exists == 'false'
         run: |
-          PR_NUMBER="${{ steps.create_pr.outputs.pr_number }}"
           LABEL="${{ steps.pr_vars.outputs.label }}"
+          PR_NUMBER="${{ steps.create_pr.outputs.pr_number }}"
 
           curl -s -X POST \
             -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
@@ -110,11 +113,11 @@ jobs:
             -d "{\"labels\": [\"$LABEL\"]}" \
             "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER/labels"
 
-      - name: Assign PR to branch author
-        if: steps.create_pr.outputs.pr_number != ''
+      - name: Assign PR to author
+        if: steps.pr_check.outputs.pr_exists == 'false'
         run: |
-          PR_NUMBER="${{ steps.create_pr.outputs.pr_number }}"
           AUTHOR="${{ github.actor }}"
+          PR_NUMBER="${{ steps.create_pr.outputs.pr_number }}"
 
           curl -s -X POST \
             -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
