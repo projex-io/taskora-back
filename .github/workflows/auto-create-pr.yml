@@ -1,68 +1,73 @@
-name: Auto-create Pull Request on branch push
+name: Auto Create Pull Request
 
 on:
   push:
     branches-ignore:
       - main
+      - dev
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
+  issues: write
 
 jobs:
-  create_pr:
+  auto_create_pr:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Get branch name
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Extract branch name
         id: get_branch
-        run: echo "branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
-
-      - name: Set PR title, body and label
-        id: pr_vars
         run: |
-          BRANCH_NAME="${{ steps.get_branch.outputs.branch }}"
-
-          case "$BRANCH_NAME" in
-            feat/*)     PREFIX="🚀"; RAW_NAME="${BRANCH_NAME#feat/}";     LABEL="feature" ;;
-            fix/*)      PREFIX="🐛"; RAW_NAME="${BRANCH_NAME#fix/}";      LABEL="bug" ;;
-            chore/*)    PREFIX="🔧"; RAW_NAME="${BRANCH_NAME#chore/}";    LABEL="chore" ;;
-            docs/*)     PREFIX="📚"; RAW_NAME="${BRANCH_NAME#docs/}";     LABEL="documentation" ;;
-            refactor/*) PREFIX="♻️"; RAW_NAME="${BRANCH_NAME#refactor/}"; LABEL="refactor" ;;
-            test/*)     PREFIX="✅"; RAW_NAME="${BRANCH_NAME#test/}";     LABEL="test" ;;
-            ci/*)       PREFIX="🔄"; RAW_NAME="${BRANCH_NAME#ci/}";       LABEL="ci" ;;
-            perf/*)     PREFIX="⚡"; RAW_NAME="${BRANCH_NAME#perf/}";     LABEL="performance" ;;
-            style/*)    PREFIX="💄"; RAW_NAME="${BRANCH_NAME#style/}";    LABEL="style" ;;
-            build/*)    PREFIX="🛠️"; RAW_NAME="${BRANCH_NAME#build/}";   LABEL="build" ;;
-            hotfix/*)   PREFIX="🔥"; RAW_NAME="${BRANCH_NAME#hotfix/}";   LABEL="hotfix" ;;
-            *)          PREFIX=""; RAW_NAME="$BRANCH_NAME";               LABEL="" ;;
-          esac
-
-          TITLE_TEXT=$(echo "$RAW_NAME" | tr '-' ' ')
-          TITLE_TEXT="$(echo "$TITLE_TEXT" | sed 's/^./\u&/')"
-
-          PR_TITLE="$PREFIX $TITLE_TEXT"
-          PR_BODY="PR automatique créée depuis la branche \`$BRANCH_NAME\`."
-
-          echo "pr_title=$PR_TITLE" >> $GITHUB_OUTPUT
-          echo "pr_body=$PR_BODY" >> $GITHUB_OUTPUT
-          echo "label=$LABEL" >> $GITHUB_OUTPUT
+          echo "branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
 
       - name: Check if PR already exists
         id: pr_check
         run: |
           BRANCH_NAME="${{ steps.get_branch.outputs.branch }}"
-          PRS=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:$BRANCH_NAME&base=main&state=open")
-          PR_COUNT=$(echo "$PRS" | jq 'length')
-
-          if [ "$PR_COUNT" -gt 0 ]; then
+          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:$BRANCH_NAME&state=open")
+          COUNT=$(echo "$RESPONSE" | jq length)
+          if [ "$COUNT" -gt 0 ]; then
+            echo "PR already exists"
             echo "pr_exists=true" >> $GITHUB_OUTPUT
           else
+            echo "No PR exists"
             echo "pr_exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create PR if none exists
+      - name: Define title and body
+        id: pr_vars
+        run: |
+          BRANCH_NAME="${{ steps.get_branch.outputs.branch }}"
+          PREFIX=$(echo "$BRANCH_NAME" | cut -d '/' -f1)
+          NAME=$(echo "$BRANCH_NAME" | cut -d '/' -f2- | sed 's/-/ /g')
+          TITLE_EMOJI=""
+          LABEL=""
+
+          case "$PREFIX" in
+            feat) TITLE_EMOJI="🚀"; LABEL="feature" ;;
+            fix) TITLE_EMOJI="🐛"; LABEL="bug" ;;
+            build) TITLE_EMOJI="🛠️"; LABEL="build" ;;
+            chore) TITLE_EMOJI="🧹"; LABEL="chore" ;;
+            refactor) TITLE_EMOJI="🔨"; LABEL="refactor" ;;
+            docs) TITLE_EMOJI="📚"; LABEL="documentation" ;;
+            test) TITLE_EMOJI="✅"; LABEL="test" ;;
+            style) TITLE_EMOJI="🎨"; LABEL="style" ;;
+            *) TITLE_EMOJI="📦"; LABEL="other" ;;
+          esac
+
+          TITLE="$TITLE_EMOJI $(echo "${NAME^}")"
+          BODY="PR automatique créée depuis la branche \`$BRANCH_NAME\`."
+
+          echo "pr_title=$TITLE" >> $GITHUB_OUTPUT
+          echo "pr_body=$BODY" >> $GITHUB_OUTPUT
+          echo "label=$LABEL" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
         id: create_pr
         if: steps.pr_check.outputs.pr_exists == 'false'
         run: |
@@ -84,8 +89,20 @@ jobs:
           PR_NUMBER=$(echo "$PR_RESPONSE" | jq -r .number)
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
 
-      - name: Assign PR to branch author
-        if: steps.pr_check.outputs.pr_exists == 'false'
+      - name: Add labels to PR
+        if: steps.create_pr.outputs.pr_number != ''
+        run: |
+          LABEL="${{ steps.pr_vars.outputs.label }}"
+          PR_NUMBER="${{ steps.create_pr.outputs.pr_number }}"
+
+          curl -s -X POST \
+            -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"labels\": [\"$LABEL\"]}" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER/labels"
+
+      - name: Assign PR to author
+        if: steps.create_pr.outputs.pr_number != ''
         run: |
           PR_NUMBER="${{ steps.create_pr.outputs.pr_number }}"
           AUTHOR="${{ github.actor }}"
@@ -94,16 +111,4 @@ jobs:
             -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d "{\"assignees\": [\"$AUTHOR\"]}" \
-            "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER"
-
-      - name: Add label to PR
-        if: steps.pr_check.outputs.pr_exists == 'false' && steps.pr_vars.outputs.label != ''
-        run: |
-          PR_NUMBER="${{ steps.create_pr.outputs.pr_number }}"
-          LABEL="${{ steps.pr_vars.outputs.label }}"
-
-          curl -s -X POST \
-            -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d "{\"labels\": [\"$LABEL\"]}" \
-            "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER"
+            "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER/assignees"
