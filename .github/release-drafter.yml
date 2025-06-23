@@ -1,5 +1,16 @@
 name-template: 'Release $NEXT_PATCH_VERSION 🚀'
 tag-template: 'v$NEXT_PATCH_VERSION'
+change-template: '- $TITLE (#$NUMBER) by @$AUTHOR'
+change-title-escapes: '-'
+template: |
+  ## Changes
+
+  $CHANGES
+
+  ## Contributors
+
+  $CONTRIBUTORS
+
 categories:
   - title: '🚀 Features'
     labels:
@@ -14,5 +25,3 @@ categories:
   - title: '📦 Releases'
     labels:
       - release
-change-template: '- $TITLE (#$NUMBER) by @$AUTHOR'
-change-title-escapes: ['-']
