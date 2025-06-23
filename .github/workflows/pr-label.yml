@@ -77,6 +77,6 @@ jobs:
         if: env.run_auto_merge == 'true'
         run: |
           echo "Attempting to auto-merge PR #${{ github.event.pull_request.number }}..."
-          gh pr merge ${{ github.event.pull_request.number }} --merge --auto --delete-branch --confirm
+          gh pr merge ${{ github.event.pull_request.number }} --merge --auto --delete-branch
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
