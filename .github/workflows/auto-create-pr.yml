@@ -4,17 +4,12 @@ on:
   push:
     branches-ignore:
       - main
-      - dev
-
-permissions:
-  pull-requests: write
-  contents: read
 
 jobs:
   create-pr:
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.PAT_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
