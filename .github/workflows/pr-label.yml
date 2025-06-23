@@ -74,7 +74,7 @@ jobs:
         run: echo "Executing task for 'refactor' label"
 
       - name: Auto merge PR if 'auto-merge' label present and conditions met
-        if: env.run_auto_merge == 'true'
+        if: env.run_auto_merge == 'true' && github.event.pull_request.draft == false
         run: |
           echo "Attempting to auto-merge PR #${{ github.event.pull_request.number }}..."
           gh pr merge ${{ github.event.pull_request.number }} --squash --auto --delete-branch
