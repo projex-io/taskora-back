@@ -8,6 +8,8 @@ on:
 jobs:
   create-pr:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Install GitHub CLI
         run: |
@@ -53,7 +55,5 @@ jobs:
         if: steps.pr_check.outputs.pr_number == ''
         run: |
           gh pr create --title "${{ steps.vars.outputs.title }}" --head "${{ steps.vars.outputs.branch }}" --base main --assignee @me --label "${{ steps.vars.outputs.label }}"
-          # Récupérer l'URL de la PR créée
           PR_URL=$(gh pr list --head ${{ steps.vars.outputs.branch }} --limit 1 --json url --jq '.[0].url')
           echo "Created PR: $PR_URL"
-      
