@@ -17,6 +17,7 @@ jobs:
       - name: Extract branch name
         id: get_branch
         run: |
+          # Supprime le prefix refs/heads/
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
           echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
@@ -24,12 +25,13 @@ jobs:
         id: pr_check
         run: |
           BRANCH_NAME="${{ steps.get_branch.outputs.branch }}"
+          OWNER="${{ github.repository_owner }}"
           PRS=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
-            https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:$BRANCH_NAME)
+            "https://api.github.com/repos/${{ github.repository }}/pulls?head=$OWNER:$BRANCH_NAME")
           PR_EXISTS=$(echo "$PRS" | jq 'length > 0')
           echo "pr_exists=$PR_EXISTS" >> $GITHUB_OUTPUT
 
-      - name: Define PR title and body
+      - name: Define PR title, body and label
         id: pr_vars
         run: |
           BRANCH_NAME="${{ steps.get_branch.outputs.branch }}"
@@ -37,33 +39,37 @@ jobs:
           PREFIX=$(echo "$BRANCH_NAME" | cut -d'/' -f1)
           REST=$(echo "$BRANCH_NAME" | cut -d'/' -f2-)
 
+          format_title() {
+            echo "$1" | sed -E 's/-/ /g' | sed -E 's/^(.)/\U\1/'
+          }
+
           case "$PREFIX" in
             feat)
-              TITLE="🚀 $(echo "$REST" | sed -E 's/-/ /g' | sed -E 's/^(.)/\U\1/')"
+              TITLE="🚀 $(format_title "$REST")"
               LABEL="feature"
               ;;
             fix)
-              TITLE="🐛 $(echo "$REST" | sed -E 's/-/ /g' | sed -E 's/^(.)/\U\1/')"
+              TITLE="🐛 $(format_title "$REST")"
               LABEL="bug"
               ;;
             build)
-              TITLE="🛠️ $(echo "$REST" | sed -E 's/-/ /g' | sed -E 's/^(.)/\U\1/')"
+              TITLE="🛠️ $(format_title "$REST")"
               LABEL="build"
               ;;
             chore)
-              TITLE="🧹 $(echo "$REST" | sed -E 's/-/ /g' | sed -E 's/^(.)/\U\1/')"
+              TITLE="🧹 $(format_title "$REST")"
               LABEL="chore"
               ;;
             docs)
-              TITLE="📚 $(echo "$REST" | sed -E 's/-/ /g' | sed -E 's/^(.)/\U\1/')"
+              TITLE="📚 $(format_title "$REST")"
               LABEL="documentation"
               ;;
             test)
-              TITLE="🧪 $(echo "$REST" | sed -E 's/-/ /g' | sed -E 's/^(.)/\U\1/')"
+              TITLE="🧪 $(format_title "$REST")"
               LABEL="test"
               ;;
             *)
-              TITLE="✨ $(echo "$REST" | sed -E 's/-/ /g' | sed -E 's/^(.)/\U\1/')"
+              TITLE="✨ $(format_title "$REST")"
               LABEL="enhancement"
               ;;
           esac
@@ -75,17 +81,19 @@ jobs:
 
       - name: Create Pull Request
         if: steps.pr_check.outputs.pr_exists == 'false'
+        id: create_pr
         run: |
           BRANCH_NAME="${{ steps.get_branch.outputs.branch }}"
           TITLE="${{ steps.pr_vars.outputs.pr_title }}"
           BODY="${{ steps.pr_vars.outputs.pr_body }}"
+          OWNER="${{ github.repository_owner }}"
 
           PR_RESPONSE=$(curl -s -X POST \
             -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d "$(jq -n \
               --arg title "$TITLE" \
-              --arg head "$BRANCH_NAME" \
+              --arg head "$OWNER:$BRANCH_NAME" \
               --arg base "main" \
               --arg body "$BODY" \
               '{title: $title, head: $head, base: $base, body: $body}')" \
