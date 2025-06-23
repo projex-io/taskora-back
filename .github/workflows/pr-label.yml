@@ -3,31 +3,57 @@ name: Run workflow based on PR label
 on:
   pull_request:
     types:
-      - labeled   # Déclenchement lorsque vous ajoutez un label à une PR.
+      - labeled
 
 jobs:
   check_label_and_run:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check PR labels
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Check PR labels and set action
         run: |
-          echo "Fetching PR labels..."
           LABELS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels")
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" \
+            | jq -r '.[].name')
 
           echo "Labels found: $LABELS"
 
-          # Vérifie si un label spécifique est présent
-          if [[ "$LABELS" =~ "question" ]]; then
-            echo "The label 'question' is present. Running the workflow!"
-            echo "run=true" >> $GITHUB_ENV
-          else
-            echo "Label 'question' not found. Skipping."
-            echo "run=false" >> $GITHUB_ENV
-          fi
+          run_action="none"
 
-      - name: Run conditionally
-        if: env.run == 'true'
-        run: echo "The workflow is executed because the label is present."
+          for label in $LABELS; do
+            case "$label" in
+              question)
+                echo "Found label 'question'"
+                run_action="question"
+                ;;
+              bug)
+                echo "Found label 'bug'"
+                run_action="bug"
+                ;;
+              feature)
+                echo "Found label 'feature'"
+                run_action="feature"
+                ;;
+            esac
+          done
+
+          echo "run_action=$run_action" >> $GITHUB_ENV
+
+      - name: Run task for 'question' label
+        if: env.run_action == 'question'
+        run: echo "Executing task for 'question' label"
+
+      - name: Run task for 'bug' label
+        if: env.run_action == 'bug'
+        run: echo "Executing task for 'bug' label"
+
+      - name: Run task for 'feature' label
+        if: env.run_action == 'feature'
+        run: echo "Executing task for 'feature' label"
+
+      - name: Run task for 'no-draft' label
+        if: env.run_action == 'no-draft'
+        run: echo "Executing task for 'no-draft' label"
