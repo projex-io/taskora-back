@@ -78,9 +78,11 @@ jobs:
         id: tag
         if: steps.pr.outputs.should_release == 'true'
         run: |
-          echo "BRANCH_NAME=${{ steps.pr.outputs.head_ref }}" >> $GITHUB_ENV
-          echo "TAG_NAME=${BRANCH_NAME#rel/}" >> $GITHUB_ENV
-          echo "tag=${BRANCH_NAME#rel/}" >> $GITHUB_OUTPUT
+          BRANCH_NAME="${{ steps.pr.outputs.head_ref }}"
+          TAG_NAME="${BRANCH_NAME#rel/}"
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
 
       - name: Créer la release GitHub
         if: steps.pr.outputs.should_release == 'true'
