@@ -9,6 +9,20 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Check if PR is draft
+        id: check_draft
+        run: |
+          IS_DRAFT=$(gh pr view ${{ github.event.pull_request.number }} --json isDraft --jq .isDraft)
+          echo "is_draft=$IS_DRAFT" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Abort if PR is draft
+        if: steps.check_draft.outputs.is_draft == 'true'
+        run: |
+          echo "PR is draft, skipping CI."
+          exit 1
+
       - uses: actions/checkout@v4
 
       - name: Set up JDK
