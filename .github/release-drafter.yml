@@ -1,4 +1,3 @@
-name-template: 'Release $NEXT_VERSION 🚀'
 tag-template: 'v$NEXT_VERSION'
 change-template: '- $TITLE (#$NUMBER) by @$AUTHOR'
 change-title-escapes: '-'
