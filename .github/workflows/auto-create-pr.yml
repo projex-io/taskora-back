@@ -1,4 +1,4 @@
-name: Auto Create PR
+name: Auto-create PR on push (except main)
 
 on:
   push:
@@ -6,24 +6,21 @@ on:
       - main
 
 jobs:
-  create-pr:
+  auto_pr:
     runs-on: ubuntu-latest
+
     env:
       GH_TOKEN: ${{ secrets.PAT_TOKEN }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
-      - name: Install GitHub CLI
-        run: |
-          sudo apt update
-          sudo apt install -y gh
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Extract branch info and PR metadata
         id: vars
         run: |
           BRANCH_NAME=${{ github.ref_name }}
-          
+
           case "$BRANCH_NAME" in
             feat/*)     PREFIX="🚀"; RAW_NAME="${BRANCH_NAME#feat/}";     LABEL="feature" ;;
             fix/*)      PREFIX="🐛"; RAW_NAME="${BRANCH_NAME#fix/}";      LABEL="bug" ;;
@@ -33,32 +30,38 @@ jobs:
             build/*)    PREFIX="🛠️"; RAW_NAME="${BRANCH_NAME#build/}";    LABEL="" ;;
             *)          PREFIX=""; RAW_NAME="$BRANCH_NAME";               LABEL="" ;;
           esac
-          
-          # Capitalize first letter of each word and replace "-" by space
+
           TITLE_RAW=$(echo "$RAW_NAME" | sed -e 's/\b\(.\)/\u\1/g' -e 's/-/ /g')
-          
-          # Compose title with or without prefix (no extra space)
           if [ -n "$PREFIX" ]; then
             TITLE="$PREFIX $TITLE_RAW"
           else
             TITLE="$TITLE_RAW"
           fi
-          
+
           echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
           echo "prefix=$PREFIX" >> $GITHUB_OUTPUT
           echo "raw_name=$RAW_NAME" >> $GITHUB_OUTPUT
           echo "label=$LABEL" >> $GITHUB_OUTPUT
           echo "title=$TITLE" >> $GITHUB_OUTPUT
 
-      - name: Check if PR exists for branch
-        id: pr_check
+      - name: Check if PR exists
+        id: check_pr
         run: |
-          EXISTING_PR=$(gh pr list --head ${{ steps.vars.outputs.branch }} --json number --jq '.[0].number' || echo "")
-          echo "pr_number=$EXISTING_PR" >> $GITHUB_OUTPUT
+          EXISTING_PR=$(gh pr list --head "${{ steps.vars.outputs.branch }}" --state open --json number --jq '.[0].number' || echo "")
+          if [ -z "$EXISTING_PR" ]; then
+            echo "exists=false" >> $GITHUB_OUTPUT
+          else
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "pr_number=$EXISTING_PR" >> $GITHUB_OUTPUT
+          fi
 
       - name: Create PR if none exists
-        if: steps.pr_check.outputs.pr_number == ''
+        if: steps.check_pr.outputs.exists == 'false'
         run: |
-          gh pr create --title "${{ steps.vars.outputs.title }}" --body "Auto-generated PR" --head "${{ steps.vars.outputs.branch }}" --base main --label "${{ steps.vars.outputs.label }}"
-          PR_URL=$(gh pr list --head ${{ steps.vars.outputs.branch }} --limit 1 --json url --jq '.[0].url')
-          echo "Created PR: $PR_URL"
+          gh pr create \
+            --title "${{ steps.vars.outputs.title }}" \
+            --body "Auto-generated PR" \
+            --head "${{ steps.vars.outputs.branch }}" \
+            --base main \
+            $(if [ -n "${{ steps.vars.outputs.label }}" ]; then echo "--label ${{ steps.vars.outputs.label }}"; fi) \
+            --draft

@@ -3,31 +3,87 @@ name: Run workflow based on PR label
 on:
   pull_request:
     types:
-      - labeled   # Déclenchement lorsque vous ajoutez un label à une PR.
+      - opened
+      - synchronize
+      - labeled
 
 jobs:
   check_label_and_run:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check PR labels
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Check PR labels and set actions
         run: |
-          echo "Fetching PR labels..."
           LABELS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels")
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" \
+            | jq -r '.[].name')
 
           echo "Labels found: $LABELS"
 
-          # Vérifie si un label spécifique est présent
-          if [[ "$LABELS" =~ "question" ]]; then
-            echo "The label 'question' is present. Running the workflow!"
-            echo "run=true" >> $GITHUB_ENV
-          else
-            echo "Label 'question' not found. Skipping."
-            echo "run=false" >> $GITHUB_ENV
-          fi
+          # Initialisation à false
+          run_question=false
+          run_bug=false
+          run_feature=false
+          run_no_draft=false
+          run_refactor=false
 
-      - name: Run conditionally
-        if: env.run == 'true'
-        run: echo "The workflow is executed because the label is present."
+          while IFS= read -r label; do
+            case "$label" in
+              question) 
+                echo "Found label 'question'"
+                run_question=true
+                ;;
+              bug) 
+                echo "Found label 'bug'"
+                run_bug=true
+                ;;
+              feature) 
+                echo "Found label 'feature'"
+                run_feature=true
+                ;;
+              no-draft) 
+                echo "Found label 'no-draft'"
+                run_no_draft=true
+                ;;
+              refactor) 
+                echo "Found label 'refactor'"
+                run_refactor=true
+                ;;
+            esac
+          done <<< "$LABELS"
+
+          # Exporter les variables d'environnement pour les steps suivants
+          echo "run_question=$run_question" >> $GITHUB_ENV
+          echo "run_bug=$run_bug" >> $GITHUB_ENV
+          echo "run_feature=$run_feature" >> $GITHUB_ENV
+          echo "run_no_draft=$run_no_draft" >> $GITHUB_ENV
+          echo "run_refactor=$run_refactor" >> $GITHUB_ENV
+      
+
+      - name: Run task for 'question' label
+        if: env.run_question == 'true'
+        run: echo "Executing task for 'question' label"
+
+      - name: Run task for 'bug' label
+        if: env.run_bug == 'true'
+        run: echo "Executing task for 'bug' label"
+
+      - name: Run task for 'feature' label
+        if: env.run_feature == 'true'
+        run: echo "Executing task for 'feature' label"
+
+      - name: Mark PR as ready (remove draft)
+        if: env.run_no_draft == 'true'
+        run: gh pr ready ${{ github.event.pull_request.number }}
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+
+      - name: Run task for 'refactor' label
+        if: env.run_refactor == 'true'
+        run: echo "Executing task for 'refactor' label"
