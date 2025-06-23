@@ -11,6 +11,9 @@ jobs:
   check_label_and_run:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
