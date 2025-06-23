@@ -49,6 +49,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - name: Checkout repository
+      - uses: actions/checkout@v3
+
       - name: Trouver la PR liée au commit squash
         id: pr
         uses: actions/github-script@v7
