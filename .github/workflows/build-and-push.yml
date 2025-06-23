@@ -48,66 +48,42 @@ jobs:
   release_if_applicable:
     runs-on: ubuntu-latest
     needs: build
-    if: |
-      github.event.head_commit.message == 'Merge pull request' ||
-      contains(github.event.head_commit.message, 'Merge pull request')
     steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Get latest merged PR
+      - name: Trouver la PR liée au commit squash
         id: pr
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.PAT_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const prs = await github.rest.pulls.list({
+            const commitSha = context.sha;
+            const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              state: 'closed',
-              sort: 'updated',
-              direction: 'desc',
-              per_page: 5
+              commit_sha: commitSha,
+              mediaType: {
+                previews: ['groot'] // requis pour cette API
+              }
             });
-
-            const merged = prs.data.find(pr =>
-              pr.merged_at &&
-              pr.merge_commit_sha === context.sha &&
-              pr.head.ref.startsWith('rel/') &&
-              pr.labels.find(l => l.name === 'release')
-            );
-
-            if (!merged) {
-              core.setOutput('do_release', 'false');
+            
+            if (prs.length === 0) {
+              console.log("Aucune PR liée au commit");
+              core.setOutput('should_release', 'false');
               return;
             }
+            
+            const pr = prs[0];
+            const hasReleaseLabel = pr.labels.some(label => label.name === 'release');
+            
+            core.setOutput('should_release', hasReleaseLabel ? 'true' : 'false');
+            core.setOutput('pr_number', pr.number);
 
-            const fullRef = merged.head.ref; // rel/v0.1.2
-            const tag = fullRef.replace(/^rel\//, ''); // v0.1.2
-            core.setOutput('do_release', 'true');
-            core.setOutput('tag_name', tag);
-
-      - name: Create Git Tag
-        if: steps.pr.outputs.do_release == 'true'
+      - name: Exécuter le release
+        if: steps.pr.outputs.should_release == 'true'
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git tag "${{ steps.pr.outputs.tag_name }}"
-          git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} "${{ steps.pr.outputs.tag_name }}"
+          echo "✅ PR #${{ steps.pr.outputs.pr_number }} avait le label 'release'. Lancement du release..."
+          # ta logique de release ici (npm publish, tag, etc.)
 
-      - name: Create GitHub Release
-        if: steps.pr.outputs.do_release == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.pr.outputs.tag_name }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
-
-      - name: Build & Push Docker image with release tag
-        if: steps.pr.outputs.do_release == 'true'
-        run: |
-          docker build -t ghcr.io/projex-io/taskora-back:${{ steps.pr.outputs.tag_name }} .
-          echo "${{ secrets.PAT_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          docker push ghcr.io/projex-io/taskora-back:${{ steps.pr.outputs.tag_name }}
+      - name: Ignorer le release si pas de label
+        if: steps.pr.outputs.should_release != 'true'
+        run: echo "❌ La PR n'avait pas le label 'release'. Release ignoré."
   
