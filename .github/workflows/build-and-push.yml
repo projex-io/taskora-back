@@ -60,30 +60,40 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               commit_sha: commitSha,
-              mediaType: {
-                previews: ['groot'] // requis pour cette API
-              }
+              mediaType: { previews: ['groot'] }
             });
-            
+
             if (prs.length === 0) {
-              console.log("Aucune PR liée au commit");
               core.setOutput('should_release', 'false');
               return;
             }
-            
+
             const pr = prs[0];
             const hasReleaseLabel = pr.labels.some(label => label.name === 'release');
-            
             core.setOutput('should_release', hasReleaseLabel ? 'true' : 'false');
             core.setOutput('pr_number', pr.number);
+            core.setOutput('head_ref', pr.head.ref);  // Ex: rel/v1.2.3
 
-      - name: Exécuter le release
+      - name: Extraire le tag depuis le nom de la branche
+        id: tag
         if: steps.pr.outputs.should_release == 'true'
         run: |
-          echo "✅ PR #${{ steps.pr.outputs.pr_number }} avait le label 'release'. Lancement du release..."
-          # ta logique de release ici (npm publish, tag, etc.)
+          echo "BRANCH_NAME=${{ steps.pr.outputs.head_ref }}" >> $GITHUB_ENV
+          echo "TAG_NAME=${BRANCH_NAME#rel/}" >> $GITHUB_ENV
+          echo "tag=${BRANCH_NAME#rel/}" >> $GITHUB_OUTPUT
+
+      - name: Créer la release GitHub
+        if: steps.pr.outputs.should_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "Release ${{ steps.tag.outputs.tag }}"
+          body: "Automated release from PR #${{ steps.pr.outputs.pr_number }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Ignorer le release si pas de label
         if: steps.pr.outputs.should_release != 'true'
-        run: echo "❌ La PR n'avait pas le label 'release'. Release ignoré."
+        run: echo "❌ Pas de label 'release', aucune release créée."
+
   
