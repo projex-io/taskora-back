@@ -54,6 +54,6 @@ jobs:
       - name: Create PR if none exists
         if: steps.pr_check.outputs.pr_number == ''
         run: |
-          gh pr create --title "${{ steps.vars.outputs.title }}" --head "${{ steps.vars.outputs.branch }}" --base main --assignee @me --label "${{ steps.vars.outputs.label }}"
+          gh pr create --title "${{ steps.vars.outputs.title }}" --body "Auto-generated PR" --head "${{ steps.vars.outputs.branch }}" --base main --assignee @me --label "${{ steps.vars.outputs.label }}"
           PR_URL=$(gh pr list --head ${{ steps.vars.outputs.branch }} --limit 1 --json url --jq '.[0].url')
           echo "Created PR: $PR_URL"
