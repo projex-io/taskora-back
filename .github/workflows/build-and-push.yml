@@ -25,13 +25,7 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew clean build --no-daemon
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-jar
-          path: build/libs/*.jar
-
-      - name: Define Docker Tag
+      - name: Define Docker Tag (dev version)
         id: generate_tag
         run: |
           SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
@@ -50,77 +44,3 @@ jobs:
 
       - name: Push Docker image
         run: docker push ghcr.io/projex-io/taskora-back:${{ env.TAG }}
-
-  release_if_applicable:
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Download app artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: app-jar
-          path: build/libs
-
-      - name: Trouver la PR liée au commit squash
-        id: pr
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const commitSha = context.sha;
-            const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              commit_sha: commitSha,
-              mediaType: { previews: ['groot'] }
-            });
-
-            if (prs.length === 0) {
-              core.setOutput('should_release', 'false');
-              return;
-            }
-
-            const pr = prs[0];
-            const hasReleaseLabel = pr.labels.some(label => label.name === 'release');
-            core.setOutput('should_release', hasReleaseLabel ? 'true' : 'false');
-            core.setOutput('pr_number', pr.number);
-            core.setOutput('head_ref', pr.head.ref);  // Ex: rel/v1.2.3
-
-      - name: Extraire le tag depuis le nom de la branche
-        id: tag
-        if: steps.pr.outputs.should_release == 'true'
-        run: |
-          BRANCH_NAME="${{ steps.pr.outputs.head_ref }}"
-          TAG_NAME="${BRANCH_NAME#rel/}"
-          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
-          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
-          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
-
-      - name: Rebuild Docker image avec le tag de release
-        if: steps.pr.outputs.should_release == 'true'
-        run: |
-          docker build -t ghcr.io/projex-io/taskora-back:${{ env.TAG_NAME }} .
-          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          docker push ghcr.io/projex-io/taskora-back:${{ env.TAG_NAME }}
-
-      - name: Créer la release GitHub
-        if: steps.pr.outputs.should_release == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.tag.outputs.tag }}
-          name: "🚀 v${{ steps.tag.outputs.tag }}"
-          body: |
-            Automated release from PR #${{ steps.pr.outputs.pr_number }}
-
-            See changelog below:
-            ---
-            ${{ steps.tag.outputs.tag }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Ignorer la release si pas de label
-        if: steps.pr.outputs.should_release != 'true'
-        run: echo "❌ Pas de label 'release', aucune release créée."
