@@ -10,25 +10,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check if PR is draft
-        id: check_draft
-        run: |
-          IS_DRAFT=$(gh pr view ${{ github.event.pull_request.number }} --json isDraft --jq .isDraft)
-          echo "is_draft=$IS_DRAFT" >> $GITHUB_OUTPUT
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Set up JDK
-        if: steps.check_draft.outputs.is_draft == 'false'
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
 
       - name: Build
-        if: steps.check_draft.outputs.is_draft == 'false'
         run: ./gradlew assemble --no-daemon
 
       - name: Run tests
-        if: steps.check_draft.outputs.is_draft == 'false'
         run: ./gradlew test --no-daemon
