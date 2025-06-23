@@ -1,74 +1,56 @@
-name: Release on PR merge with label 'release'
+name: Create Release on Merge
 
 on:
   pull_request:
     types: [closed]
-    branches: [main]
+    branches:
+      - main
 
 jobs:
-  release:
-    if: github.event.pull_request.merged == true
+  create_release:
+    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release')
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get PR labels
-        id: get_labels
-        run: |
-          labels=$(jq -r '.pull_request.labels[].name' "$GITHUB_EVENT_PATH" | tr '\n' ' ')
-          echo "labels=$labels" >> $GITHUB_OUTPUT
-
-      - name: Check if 'release' label present
-        id: check_label
-        run: |
-          echo "${{ steps.get_labels.outputs.labels }}" | grep -qw "release" && echo "release=true" >> $GITHUB_OUTPUT || echo "release=false" >> $GITHUB_OUTPUT
-
-      - name: Exit if no release label
-        if: steps.check_label.outputs.release != 'true'
-        run: echo "No release label, skipping." && exit 0
-
-      - name: Get branch name from PR head
-        id: get_branch
-        run: echo "branch_name=${{ github.event.pull_request.head.ref }}" >> $GITHUB_OUTPUT
-
-      - name: Extract tag from branch name
-        id: get_tag
-        run: |
-          branch="${{ steps.get_branch.outputs.branch_name }}"
-          # Expected branch format rel/vX.Y.Z
-          tag="${branch#rel/}"
-          echo "tag=$tag" >> $GITHUB_OUTPUT
-
-      - name: Create git tag and push
-        env:
-          TAG: ${{ steps.get_tag.outputs.tag }}
+      - name: Set up Git
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
+
+      - name: Extract tag from PR branch name
+        id: tag
+        run: |
+          BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
+          if [[ "$BRANCH_NAME" =~ ^rel/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            TAG="${BASH_REMATCH[0]}"
+            echo "TAG=$TAG" >> $GITHUB_ENV
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+          else
+            echo "Invalid branch name '$BRANCH_NAME'. Must match rel/vX.Y.Z"
+            exit 1
+          fi
+
+      - name: Create Git tag and push
+        run: |
           git tag "$TAG"
-          git push origin "$TAG"
+          git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} "$TAG"
+        env:
+          TAG: ${{ env.TAG }}
 
       - name: Create GitHub release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.get_tag.outputs.tag }}
-          release_name: Release ${{ steps.get_tag.outputs.tag }}
-          draft: false
-          prerelease: false
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Release ${{ steps.tag.outputs.tag }}
+          generate_release_notes: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Log in to Docker registry
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
 
       - name: Build and push Docker image
-        env:
-          TAG: ${{ steps.get_tag.outputs.tag }}
         run: |
-          docker build -t ghcr.io/${{ github.repository_owner }}/my-app:$TAG .
-          docker push ghcr.io/${{ github.repository_owner }}/my-app:$TAG
+          echo "Build and push docker image with tag: $TAG"
+          # Exemple: docker build -t ghcr.io/OWNER/REPO:$TAG .
+          # docker push ghcr.io/OWNER/REPO:$TAG
