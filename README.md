@@ -1,3 +1,3 @@
 ### Taskora Backend
 
-Je ferais prochainement une doc pour gerer se projet dernier test
+Il faut que je trouve un moyen de declancher une release autrement car la je dois forcement faire un commit
