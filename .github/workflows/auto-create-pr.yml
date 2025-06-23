@@ -11,6 +11,9 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Install GitHub CLI
         run: |
           sudo apt update
@@ -57,3 +60,4 @@ jobs:
           gh pr create --title "${{ steps.vars.outputs.title }}" --body "Auto-generated PR" --head "${{ steps.vars.outputs.branch }}" --base main --assignee @me --label "${{ steps.vars.outputs.label }}"
           PR_URL=$(gh pr list --head ${{ steps.vars.outputs.branch }} --limit 1 --json url --jq '.[0].url')
           echo "Created PR: $PR_URL"
+
