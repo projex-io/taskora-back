@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GH_TOKEN: ${{ secrets.PAT_TOKEN }}  # Ton PAT avec droits PR
+      GH_TOKEN: ${{ secrets.PAT_TOKEN }}
 
     steps:
       - name: Checkout code
@@ -24,15 +24,10 @@ jobs:
           case "$BRANCH_NAME" in
             feat/*)     PREFIX="🚀"; RAW_NAME="${BRANCH_NAME#feat/}";     LABEL="feature" ;;
             fix/*)      PREFIX="🐛"; RAW_NAME="${BRANCH_NAME#fix/}";      LABEL="bug" ;;
-            chore/*)    PREFIX="🔧"; RAW_NAME="${BRANCH_NAME#chore/}";    LABEL="chore" ;;
             docs/*)     PREFIX="📚"; RAW_NAME="${BRANCH_NAME#docs/}";     LABEL="documentation" ;;
             refactor/*) PREFIX="♻️"; RAW_NAME="${BRANCH_NAME#refactor/}"; LABEL="refactor" ;;
-            test/*)     PREFIX="✅"; RAW_NAME="${BRANCH_NAME#test/}";     LABEL="test" ;;
-            ci/*)       PREFIX="🔄"; RAW_NAME="${BRANCH_NAME#ci/}";       LABEL="ci" ;;
-            perf/*)     PREFIX="⚡"; RAW_NAME="${BRANCH_NAME#perf/}";     LABEL="performance" ;;
-            style/*)    PREFIX="💄"; RAW_NAME="${BRANCH_NAME#style/}";    LABEL="style" ;;
-            build/*)    PREFIX="🛠️"; RAW_NAME="${BRANCH_NAME#build/}";   LABEL="build" ;;
-            hotfix/*)   PREFIX="🔥"; RAW_NAME="${BRANCH_NAME#hotfix/}";   LABEL="hotfix" ;;
+            perf/*)     PREFIX="⚡"; RAW_NAME="${BRANCH_NAME#perf/}";      LABEL="" ;;
+            build/*)    PREFIX="🛠️"; RAW_NAME="${BRANCH_NAME#build/}";    LABEL="" ;;
             *)          PREFIX=""; RAW_NAME="$BRANCH_NAME";               LABEL="" ;;
           esac
 
