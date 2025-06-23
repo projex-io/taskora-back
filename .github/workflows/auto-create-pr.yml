@@ -26,8 +26,7 @@ jobs:
             fix/*)      PREFIX="🐛"; RAW_NAME="${BRANCH_NAME#fix/}";      LABEL="bug" ;;
             docs/*)     PREFIX="📚"; RAW_NAME="${BRANCH_NAME#docs/}";     LABEL="documentation" ;;
             refactor/*) PREFIX="♻️"; RAW_NAME="${BRANCH_NAME#refactor/}"; LABEL="refactor" ;;
-            perf/*)     PREFIX="⚡"; RAW_NAME="${BRANCH_NAME#perf/}";      LABEL="" ;;
-            build/*)    PREFIX="🛠️"; RAW_NAME="${BRANCH_NAME#build/}";    LABEL="" ;;
+            perf/*)     PREFIX="⚡"; RAW_NAME="${BRANCH_NAME#perf/}";      LABEL="performance" ;;
             rel/*)      PREFIX="📦"; RAW_NAME="${BRANCH_NAME#rel/}";      LABEL="release" ;;
             *)          PREFIX=""; RAW_NAME="$BRANCH_NAME";               LABEL="" ;;
           esac
