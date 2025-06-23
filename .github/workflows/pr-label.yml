@@ -23,30 +23,15 @@ jobs:
 
           run_action="none"
 
-          for label in $LABELS; do
+          while IFS= read -r label; do
             case "$label" in
-              question)
-                echo "Found label 'question'"
-                run_action="question"
-                ;;
-              bug)
-                echo "Found label 'bug'"
-                run_action="bug"
-                ;;
-              feature)
-                echo "Found label 'feature'"
-                run_action="feature"
-                ;;
-              no-draft)
-                echo "Found label 'no-draft'"
-                run_action="no-draft"
-                ;;
-              refactor)
-                echo "Found label 'refactor'"
-                run_action="refactor"
-                ;;
+              question) echo "Found label 'question'"; run_action="question" ;;
+              bug) echo "Found label 'bug'"; run_action="bug" ;;
+              feature) echo "Found label 'feature'"; run_action="feature" ;;
+              no-draft) echo "Found label 'no-draft'"; run_action="no-draft" ;;
+              refactor) echo "Found label 'refactor'"; run_action="refactor" ;;
             esac
-          done
+          done <<< "$LABELS"
 
           echo "run_action=$run_action" >> $GITHUB_ENV
 
