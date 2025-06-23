@@ -39,7 +39,7 @@ jobs:
             echo "pr_exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Define title and body
+      - name: Define PR title, body, label
         id: pr_vars
         run: |
           BRANCH_NAME="${{ steps.get_branch.outputs.branch }}"
@@ -60,7 +60,9 @@ jobs:
             *) TITLE_EMOJI="📦"; LABEL="other" ;;
           esac
 
-          TITLE="$TITLE_EMOJI $(echo "${NAME^}")"
+          # Capitalize first letter of name
+          FORMATTED_NAME="$(echo "${NAME:0:1}" | tr '[:lower:]' '[:upper:]')${NAME:1}"
+          TITLE="$TITLE_EMOJI $FORMATTED_NAME"
           BODY="PR automatique créée depuis la branche \`$BRANCH_NAME\`."
 
           echo "pr_title=$TITLE" >> $GITHUB_OUTPUT
@@ -86,14 +88,21 @@ jobs:
               '{title: $title, head: $head, base: $base, body: $body}')" \
             "https://api.github.com/repos/${{ github.repository }}/pulls")
 
+          echo "$PR_RESPONSE"
+
           PR_NUMBER=$(echo "$PR_RESPONSE" | jq -r .number)
+          if [ "$PR_NUMBER" == "null" ]; then
+            echo "❌ Échec de la création de la PR"
+            exit 1
+          fi
+
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
 
-      - name: Add labels to PR
+      - name: Add label to PR
         if: steps.create_pr.outputs.pr_number != ''
         run: |
-          LABEL="${{ steps.pr_vars.outputs.label }}"
           PR_NUMBER="${{ steps.create_pr.outputs.pr_number }}"
+          LABEL="${{ steps.pr_vars.outputs.label }}"
 
           curl -s -X POST \
             -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
@@ -101,7 +110,7 @@ jobs:
             -d "{\"labels\": [\"$LABEL\"]}" \
             "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER/labels"
 
-      - name: Assign PR to author
+      - name: Assign PR to branch author
         if: steps.create_pr.outputs.pr_number != ''
         run: |
           PR_NUMBER="${{ steps.create_pr.outputs.pr_number }}"
