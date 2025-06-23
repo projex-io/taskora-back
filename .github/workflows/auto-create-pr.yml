@@ -57,8 +57,14 @@ jobs:
           echo "pr_number=$EXISTING_PR" >> $GITHUB_OUTPUT
 
       - name: Create PR if none exists
-        if: steps.pr_check.outputs.pr_number == ''
+        if: steps.check_pr.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.PAT }}
         run: |
-          gh pr create --title "${{ steps.vars.outputs.title }}" --body "Auto-generated PR" --head "${{ steps.vars.outputs.branch }}" --base main --label "${{ steps.vars.outputs.label }}"
-          PR_URL=$(gh pr list --head ${{ steps.vars.outputs.branch }} --limit 1 --json url --jq '.[0].url')
-          echo "Created PR: $PR_URL"
+          gh pr create \
+            --title "${{ steps.vars.outputs.title }}" \
+            --body "Auto-generated PR" \
+            --head "${{ steps.vars.outputs.branch }}" \
+            --base main \
+            --label "${{ steps.vars.outputs.label }}" \
+            --draft
