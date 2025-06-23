@@ -37,6 +37,14 @@ jobs:
                 echo "Found label 'feature'"
                 run_action="feature"
                 ;;
+              no-draft)
+                echo "Found label 'no-draft'"
+                run_action="no-draft"
+                ;;
+              refactor)
+                echo "Found label 'refactor'"
+                run_action="refactor"
+                ;;
             esac
           done
 
@@ -57,3 +65,7 @@ jobs:
       - name: Run task for 'no-draft' label
         if: env.run_action == 'no-draft'
         run: echo "Executing task for 'no-draft' label"
+
+      - name: Run task for 'refactor' label
+        if: env.run_action == 'refactor'
+        run: echo "Executing task for 'refactor' label"
