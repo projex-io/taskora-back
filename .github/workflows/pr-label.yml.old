@@ -29,9 +29,7 @@ jobs:
           run_question=false
           run_bug=false
           run_feature=false
-          run_no_draft=false
           run_refactor=false
-          run_auto_merge=false
 
           while IFS= read -r label; do
             case "$label" in
@@ -63,20 +61,6 @@ jobs:
         if: env.run_feature == 'true'
         run: echo "Executing task for 'feature' label"
 
-      - name: Mark PR as ready (remove draft)
-        if: env.run_no_draft == 'true'
-        run: gh pr ready ${{ github.event.pull_request.number }}
-        env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
-
       - name: Run task for 'refactor' label
         if: env.run_refactor == 'true'
         run: echo "Executing task for 'refactor' label"
-
-      - name: Auto merge PR if 'auto-merge' label present and conditions met
-        if: env.run_auto_merge == 'true' && github.event.pull_request.draft == false
-        run: |
-          echo "Attempting to auto-merge PR #${{ github.event.pull_request.number }}..."
-          gh pr merge ${{ github.event.pull_request.number }} --squash --auto --delete-branch
-        env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
