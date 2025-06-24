@@ -14,7 +14,7 @@ release-major:
 bump:
 	@echo "Fetching remote tags..."
 	@git fetch --tags
-	@LAST_TAG=$$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0"); \
+	@LAST_TAG=$$(git fetch --tags && git tag --sort=-v:refname | head -n 1 || echo "v0.0.0"); \
 	echo "Last tag: $$LAST_TAG"; \
 	VERSION=$$(echo $$LAST_TAG | sed 's/^v//'); \
 	IFS='.' read -r MAJOR MINOR PATCH <<< "$$VERSION"; \
@@ -25,6 +25,10 @@ bump:
 	esac; \
 	NEW_TAG="v$$MAJOR.$$MINOR.$$PATCH"; \
 	echo "✅ New tag would be: $$NEW_TAG"; \
-	# Uncomment below when ready \
-	git tag "$$NEW_TAG"; \
-	git push origin "$$NEW_TAG"
+	if git rev-parse "$$NEW_TAG" >/dev/null 2>&1; then \
+		echo "❌ Tag $$NEW_TAG already exists. Aborting."; \
+		exit 1; \
+	fi; \
+	# git tag "$$NEW_TAG"; \
+	# git push origin "$$NEW_TAG"
+
