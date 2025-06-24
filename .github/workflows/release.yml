@@ -78,16 +78,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image (versioned + latest)
+      - name: Build and push Docker image
         run: |
           VERSION=${{ github.ref_name }}
           IMAGE=ghcr.io/${{ github.repository }}
 
-          echo "🔧 Building Docker image: $IMAGE:$VERSION and $IMAGE:latest"
+          echo "🔧 Building Docker image: $IMAGE:$VERSION"
           docker build -t $IMAGE:$VERSION .
-          docker tag $IMAGE:$VERSION $IMAGE:latest
+          docker tag $IMAGE:$VERSION
           docker push $IMAGE:$VERSION
-          docker push $IMAGE:latest
 
       - name: Cleanup dev-* tags from GHCR
         if: success()
