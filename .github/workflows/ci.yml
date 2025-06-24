@@ -5,19 +5,4 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Build
-        run: ./gradlew assemble --no-daemon
-
-      - name: Run tests
-        run: ./gradlew test --no-daemon
+    uses: projex-io/workflows-kt/.github/workflows/build.yml@main
