@@ -61,7 +61,6 @@ jobs:
               repo: context.repo.repo,
               release_id: releaseId,
             });
-            console.log(`🗑️ Draft release #${releaseId} deleted.`);
 
       - name: Set up JDK
         uses: actions/setup-java@v3
@@ -71,7 +70,7 @@ jobs:
 
       - name: Build with Gradle
         run: ./gradlew build
-            
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -82,46 +81,40 @@ jobs:
       - name: Build and push Docker image (versioned + latest)
         run: |
           VERSION=${{ github.ref_name }}
-          IMAGE=ghcr.io/${{ github.repository }}  # ghcr.io/projex-io/taskora-back
-          
+          IMAGE=ghcr.io/${{ github.repository }}
+
           echo "🔧 Building Docker image: $IMAGE:$VERSION and $IMAGE:latest"
-          
           docker build -t $IMAGE:$VERSION .
           docker tag $IMAGE:$VERSION $IMAGE:latest
           docker push $IMAGE:$VERSION
           docker push $IMAGE:latest
 
-      - name: Delete dev-* image tags from GHCR (Org)
+      - name: Cleanup dev-* tags from GHCR
         if: success()
         env:
-          GHCR_REPO: ghcr.io/${{ github.repository }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE: ${{ github.repository }}
         run: |
-          echo "🔍 Looking for dev-* tags in $GHCR_REPO"
+          echo "::add-mask::$GH_TOKEN"
+          echo "🔍 Looking for dev-* tags in ghcr.io/$IMAGE"
 
-          # Install GitHub CLI
-          sudo apt-get update
-          sudo apt-get install -y gh jq
+          sudo apt-get update -qq && sudo apt-get install -y -qq gh jq
 
-          echo "$GH_TOKEN" | gh auth login --with-token
-
-          IMAGE_NAME=$(echo "${{ github.repository }}" | awk -F'/' '{print $2}')
-          ORG=$(echo "${{ github.repository }}" | awk -F'/' '{print $1}')
-
-          echo "📦 Image: $IMAGE_NAME"
-          echo "🏢 Organization: $ORG"
+          gh auth status || true
 
           gh api -H "Accept: application/vnd.github+json" \
-            "/orgs/$ORG/packages/container/$IMAGE_NAME/versions" > versions.json
+            "/orgs/${IMAGE%%/*}/packages/container/${IMAGE#*/}/versions" > versions.json
 
           TAGS=$(jq -r '.[] | select(.metadata.container.tags[] | startswith("dev-")) | [.id, .metadata.container.tags[]] | @tsv' versions.json)
 
           if [ -z "$TAGS" ]; then
-            echo "✅ No dev-* tags found."
+            echo "✅ Aucun tag dev-* trouvé."
             exit 0
           fi
 
           echo "$TAGS" | while IFS=$'\t' read -r id tag; do
-            echo "🗑️ Deleting tag: $tag (version ID: $id)"
-            gh api --method DELETE "/orgs/$ORG/packages/container/$IMAGE_NAME/versions/$id"
-      
+            echo "🗑️ Suppression du tag: $tag (version ID: $id)"
+            gh api --method DELETE "/orgs/${IMAGE%%/*}/packages/container/${IMAGE#*/}/versions/$id"
+          done
+
+          echo "✅ Cleanup terminé."
