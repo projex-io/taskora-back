@@ -29,6 +29,6 @@ bump:
 		echo "❌ Tag $$NEW_TAG already exists. Aborting."; \
 		exit 1; \
 	fi; \
-	# git tag "$$NEW_TAG"; \
-	# git push origin "$$NEW_TAG"
+	git tag "$$NEW_TAG"; \
+	git push origin "$$NEW_TAG"
 
