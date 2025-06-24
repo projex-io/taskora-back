@@ -65,4 +65,3 @@ jobs:
             --head "${{ steps.vars.outputs.branch }}" \
             --base main \
             $(if [ -n "${{ steps.vars.outputs.label }}" ]; then echo "--label ${{ steps.vars.outputs.label }}"; fi) \
-            --draft
