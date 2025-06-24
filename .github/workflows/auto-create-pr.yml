@@ -28,6 +28,7 @@ jobs:
             refactor/*) PREFIX="♻️"; RAW_NAME="${BRANCH_NAME#refactor/}"; LABEL="refactor" ;;
             perf/*)     PREFIX="⚡"; RAW_NAME="${BRANCH_NAME#perf/}";      LABEL="performance" ;;
             rel/*)      PREFIX="📦"; RAW_NAME="${BRANCH_NAME#rel/}";      LABEL="release" ;;
+            build/*)    PREFIX="🛠️"; RAW_NAME="${BRANCH_NAME#build/}";    LABEL="build" ;;
             *)          PREFIX=""; RAW_NAME="$BRANCH_NAME";               LABEL="" ;;
           esac
 

@@ -61,3 +61,23 @@ jobs:
               release_id: releaseId,
             });
             console.log(`🗑️ Draft release #${releaseId} deleted.`);
+            
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image (versioned + latest)
+        run: |
+          VERSION=${{ github.ref_name }}
+          IMAGE=ghcr.io/${{ github.repository }}  # ghcr.io/projex-io/taskora-back
+          
+          echo "🔧 Building Docker image: $IMAGE:$VERSION and $IMAGE:latest"
+          
+          docker build -t $IMAGE:$VERSION .
+          docker tag $IMAGE:$VERSION $IMAGE:latest
+          docker push $IMAGE:$VERSION
+          docker push $IMAGE:latest
+
