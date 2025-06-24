@@ -21,7 +21,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Extraire et appliquer les alias comme labels
+      - name: Extraire et appliquer les labels
         run: |
           echo "📦 Lecture du commit de la branche source..."
           COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
@@ -29,29 +29,17 @@ jobs:
 
           echo "🔍 Message du commit: $LAST_COMMIT_MESSAGE"
 
-          # Table de correspondance des alias → labels
-          declare -A ALIAS_MAP
-          ALIAS_MAP[fast]="auto-merge,no-draft"
-          ALIAS_MAP[release]="release"
+          # Extraire tous les #labels (ex: #backend, #feature-x)
+          RAW_LABELS=$(echo "$LAST_COMMIT_MESSAGE" | grep -o "#[a-zA-Z0-9_-]*" | tr -d "#" | xargs)
+          echo "🏷️ Labels détectés: $RAW_LABELS"
 
-          # Extraire tous les #alias
-          RAW_ALIASES=$(echo "$LAST_COMMIT_MESSAGE" | grep -o "#[a-zA-Z0-9_-]*" | tr -d "#" | xargs)
-          echo "🔗 Alias détectés: $RAW_ALIASES"
-
-          # Construire la liste des labels associés
-          FINAL_LABELS=()
-
-          for alias in $RAW_ALIASES; do
-            if [[ -n "${ALIAS_MAP[$alias]}" ]]; then
-              IFS=',' read -r -a MAPPED_LABELS <<< "${ALIAS_MAP[$alias]}"
-              FINAL_LABELS+=("${MAPPED_LABELS[@]}")
-            else
-              FINAL_LABELS+=("$alias")  # Peut être un label direct
-            fi
-          done
+          if [[ -z "$RAW_LABELS" ]]; then
+            echo "❌ Aucun label détecté."
+            exit 0
+          fi
 
           # Supprimer les doublons
-          UNIQUE_LABELS=($(printf "%s\n" "${FINAL_LABELS[@]}" | sort -u))
+          UNIQUE_LABELS=($(printf "%s\n" $RAW_LABELS | sort -u))
 
           # Vérifier les labels valides dans le repo
           echo "📥 Récupération des labels existants dans le repo..."
@@ -75,7 +63,7 @@ jobs:
           LABEL_JSON="{ \"labels\": [$(IFS=,; echo "${FILTERED_LABELS[*]}")] }"
           echo "$LABEL_JSON" > labels.json
 
-          echo "🏷️ Envoi des labels: ${FILTERED_LABELS[*]}"
+          echo "🚀 Application des labels: ${FILTERED_LABELS[*]}"
           curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d @labels.json \

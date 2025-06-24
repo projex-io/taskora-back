@@ -27,3 +27,6 @@ categories:
   - title: '⚡ Performances'
     labels:
       - performance
+  - title: '🧹 Code Cleanup'
+    labels:
+      - clean
