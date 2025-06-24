@@ -91,25 +91,30 @@ jobs:
           docker push $IMAGE:$VERSION
           docker push $IMAGE:latest
 
-      - name: Delete dev-* image tags from GHCR
+      - name: Delete dev-* image tags from GHCR (Org)
         if: success()
         env:
           GHCR_REPO: ghcr.io/${{ github.repository }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "🔍 Searching for dev-* tags in $GHCR_REPO"
+          echo "🔍 Looking for dev-* tags in $GHCR_REPO"
 
-          # Install gh CLI
-          sudo apt-get install -y gh
+          # Install GitHub CLI
+          sudo apt-get update
+          sudo apt-get install -y gh jq
 
           echo "$GH_TOKEN" | gh auth login --with-token
 
           IMAGE_NAME=$(echo "${{ github.repository }}" | awk -F'/' '{print $2}')
-          OWNER=$(echo "${{ github.repository }}" | awk -F'/' '{print $1}')
+          ORG=$(echo "${{ github.repository }}" | awk -F'/' '{print $1}')
 
-          TAGS=$(gh api -H "Accept: application/vnd.github+json" \
-            "/users/$OWNER/packages/container/$IMAGE_NAME/versions" |
-            jq -r '.[] | select(.metadata.container.tags[] | startswith("dev-")) | [.id, .metadata.container.tags[]] | @tsv')
+          echo "📦 Image: $IMAGE_NAME"
+          echo "🏢 Organization: $ORG"
+
+          gh api -H "Accept: application/vnd.github+json" \
+            "/orgs/$ORG/packages/container/$IMAGE_NAME/versions" > versions.json
+
+          TAGS=$(jq -r '.[] | select(.metadata.container.tags[] | startswith("dev-")) | [.id, .metadata.container.tags[]] | @tsv' versions.json)
 
           if [ -z "$TAGS" ]; then
             echo "✅ No dev-* tags found."
@@ -118,5 +123,5 @@ jobs:
 
           echo "$TAGS" | while IFS=$'\t' read -r id tag; do
             echo "🗑️ Deleting tag: $tag (version ID: $id)"
-            gh api --method DELETE "/users/$OWNER/packages/container/$IMAGE_NAME/versions/$id"
-          done
+            gh api --method DELETE "/orgs/$ORG/packages/container/$IMAGE_NAME/versions/$id"
+      
