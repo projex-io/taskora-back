@@ -1,0 +1,15 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build:
+    uses: projex-io/workflows-kt/.github/workflows/build-and-publish.yml@main
