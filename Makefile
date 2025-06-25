@@ -48,18 +48,17 @@ bump_auto:
 		echo "Erreur : Version incorrecte (MAJOR=$$MAJOR, MINOR=$$MINOR, PATCH=$$PATCH)"; \
 		exit 1; \
 	fi; \
-	echo "MAJOR=$$MAJOR, MINOR=$$MINOR, PATCH=$$PATCH"; \
-	# Analyse des commits pour déterminer le type de version \
-	TYPE=$$( \
-		if git log "$$LAST_TAG"..HEAD --oneline | grep -qE "(BREAKING CHANGE|#major)"; then \
-			echo "major"; \
-		elif git log "$$LAST_TAG"..HEAD --oneline | grep -qE "(feat|#minor)"; then \
-			echo "minor"; \
-		else \
-			echo "patch"; \
-		fi \
-	); \
-	echo "Detected update type: $$TYPE"; \
+	echo "Fetching PR labels..."; \
+	PR_NUMBERS=$$(git log "$$LAST_TAG"..HEAD --oneline | grep 'Merge pull request' | awk '{print $$4}' | sed 's/#//g'); \
+	TYPE="patch"; \
+	for PR_NUMBER in $$PR_NUMBERS; do \
+		LABELS=$$(curl -s -H "Authorization: Bearer GITHUB_TOKEN" \
+		          -H "Accept: application/vnd.github.v3+json" \
+		          "https://api.github.com/repos/<OWNER>/<REPO>/issues/$$PR_NUMBER" | jq '.labels[].name'); \
+		if echo "$$LABELS" | grep -q "major"; then TYPE="major"; break; fi; \
+		if echo "$$LABELS" | grep -q "feature"; then TYPE="minor"; fi; \
+	done; \
+	echo "Detected update type based on PR labels: $$TYPE"; \
 	case "$$TYPE" in \
 		major) MAJOR=$$((MAJOR+1)); MINOR=0; PATCH=0 ;; \
 		minor) MINOR=$$((MINOR+1)); PATCH=0 ;; \
