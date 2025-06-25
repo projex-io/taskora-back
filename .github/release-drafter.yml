@@ -18,6 +18,9 @@ categories:
   - title: '🐛 Bug Fixes'
     labels:
       - bug
+  - title: '🛠️ Build'
+    labels:
+      - build
   - title: '♻️ Refactor'
     labels:
       - refactor
