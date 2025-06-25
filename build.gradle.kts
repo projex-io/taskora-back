@@ -54,3 +54,15 @@ tasks.withType<Test> {
 tasks.withType<Jar> {
 	archiveFileName.set("app.jar")
 }
+
+tasks.jar {
+	enabled = false
+}
+
+tasks.bootJar {
+	enabled = true
+	manifest {
+		attributes["Main-Class"] = "com.projexio.taskora_back.TaskoraBackApplicationKt"
+	}
+}
+
