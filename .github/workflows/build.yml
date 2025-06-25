@@ -2,7 +2,10 @@ name: Continuous Integration
 
 on:
   pull_request:
+  push:
+    branches:
+      - main
 
 jobs:
   build:
-    uses: projex-io/workflows-kt/.github/workflows/build.yml@main
+    uses: projex-io/workflows-kt/.github/workflows/build-and-publish.yml@main
