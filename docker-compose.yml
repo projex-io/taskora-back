@@ -1,20 +1,39 @@
+# Définition des services : chaque conteneur sera configuré ici.
 services:
-  db:
-    image: postgres:15
-    container_name: taskora-db
-    environment:
-      POSTGRES_DB: taskora
-      POSTGRES_USER: taskora_user
-      POSTGRES_PASSWORD: taskora_pass
+  # Service PostgreSQL (base de données)
+  postgres:
+    image: postgres:15 # Image officielle PostgreSQL version 15
+    container_name: postgres-container # Nom personnalisé pour le conteneur PostgreSQL
+    restart: always # Redémarre le conteneur en cas d'erreur
+    environment: # Variables d'environnement pour configurer PostgreSQL
+      POSTGRES_USER: postgres # Nom d'utilisateur de la base de données
+      POSTGRES_PASSWORD: postgres # Mot de passe pour l'utilisateur
+      POSTGRES_DB: taskora # Nom de la base de données initiale à créer
     ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - "5432:5432" # Mappe le port 5432 de l'hôte au port 5432 du conteneur (optionnel pour accès en local)
     networks:
-      - taskora-network
+      - taskora-net # Attache PostgreSQL au réseau personnalisé 'taskora-net'
 
-volumes:
-  postgres_data:
+  # Service Spring Boot (application principale)
+  spring-app:
+    image: taskora-back-local # Image personnalisée de votre application (build via votre Dockerfile)
+    container_name: spring-app-container # Nom personnalisé pour le conteneur Spring Boot
+    build:
+      context: . # Indique le répertoire où se trouve le Dockerfile pour construire l'image
+    restart: always # Redémarre ce conteneur en cas d'erreur
+    depends_on:
+      - postgres # Assure que PostgreSQL démarre avant l'application Spring Boot
+    environment: # Variables d'environnement nécessaires pour Spring Boot
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/taskora # URL de connexion JDBC pointant vers le service 'postgres'
+      SPRING_DATASOURCE_USERNAME: postgres # Nom d'utilisateur pour la connexion à PostgreSQL
+      SPRING_DATASOURCE_PASSWORD: postgres # Mot de passe pour la connexion à PostgreSQL
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update # Permet à Hibernate de gérer automatiquement le schéma de la base
+    ports:
+      - "8080:8080" # Mappe le port 8080 de l'hôte au port 8080 du conteneur pour accéder à l'application
+    networks:
+      - taskora-net # Attache le conteneur Spring Boot au réseau personnalisé 'taskora-net'
 
+# Définition des réseaux pour permettre la communication entre les services.
 networks:
-  taskora-network:
+  taskora-net:
+    driver: bridge # Driver réseau permettant aux conteneurs de communiquer entre eux
