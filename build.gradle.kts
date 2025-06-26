@@ -25,6 +25,7 @@ dependencies {
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin") // Gérer JSON avec Kotlin
 	implementation("org.jetbrains.kotlin:kotlin-reflect") // Réflexion pour Kotlin
 	implementation("org.postgresql:postgresql:42.7.7") // Driver PostgreSQL
+	implementation("org.liquibase:liquibase-core:4.23.2")
 
 	// Test dependencies
 	testImplementation("org.testcontainers:testcontainers:1.19.7") // Testcontainers pour dockerized tests
@@ -48,19 +49,19 @@ allOpen {
 	annotation("jakarta.persistence.Embeddable")
 }
 
-tasks.withType<Test> {
-	useJUnitPlatform() // JUnit Platform pour exécuter les tests
-}
+tasks {
+	withType<Test> {
+		useJUnitPlatform()
+	}
 
-tasks.withType<Jar> {
-	archiveFileName.set("app.jar") // Nom du fichier JAR final (utilisé si bootJar est désactivé)
-}
+	jar {
+		enabled = false
+	}
 
-tasks.jar {
-	enabled = false // On désactive la tâche Jar classique
-}
-tasks.bootJar {
-	manifest {
-		attributes["Start-Class"] = "com.projexio.taskora_back.TaskoraBackApplicationKt"
+	bootJar {
+		archiveFileName.set("app.jar")
+		manifest {
+			attributes["Start-Class"] = "com.projexio.taskora_back.TaskoraBackApplicationKt"
+		}
 	}
 }

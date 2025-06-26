@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1
+      author: aassalax
+      changes:
+        - sqlFile:
+            path: changes/1-init-schema.sql
+            relativeToChangelogFile: true
+            splitStatements: true
+            stripComments: true

@@ -1,0 +1,9 @@
+app:
+  env: LOCAL
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/taskora
+    username: postgres
+    password: postgres
+  jpa:
+    show-sql: true
