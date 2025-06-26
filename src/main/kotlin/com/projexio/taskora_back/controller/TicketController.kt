@@ -28,8 +28,8 @@ class TicketController(private val ticketService: TicketService) {
 
     @PostMapping
     fun create(@RequestBody ticket: Ticket): ResponseEntity<TicketView> {
-        val ticket = ticketService.create(ticket)
-        return ResponseEntity.ok(TicketView(title = ticket.title, description = ticket.description, status = ticket.status))
+        val createdTicket = ticketService.create(ticket)
+        return ResponseEntity.ok(TicketView(title = createdTicket.title, description = createdTicket.description, status = createdTicket.status))
     }
 
     @PutMapping("/{id}")

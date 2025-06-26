@@ -48,19 +48,19 @@ allOpen {
 	annotation("jakarta.persistence.Embeddable")
 }
 
-tasks.withType<Test> {
-	useJUnitPlatform() // JUnit Platform pour exécuter les tests
-}
+tasks {
+	withType<Test> {
+		useJUnitPlatform()
+	}
 
-tasks.withType<Jar> {
-	archiveFileName.set("app.jar") // Nom du fichier JAR final (utilisé si bootJar est désactivé)
-}
+	jar {
+		enabled = false
+	}
 
-tasks.jar {
-	enabled = false // On désactive la tâche Jar classique
-}
-tasks.bootJar {
-	manifest {
-		attributes["Start-Class"] = "com.projexio.taskora_back.TaskoraBackApplicationKt"
+	bootJar {
+		archiveFileName.set("app.jar")
+		manifest {
+			attributes["Start-Class"] = "com.projexio.taskora_back.TaskoraBackApplicationKt"
+		}
 	}
 }
