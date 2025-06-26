@@ -9,6 +9,8 @@ services:
       POSTGRES_DB: taskora # Nom de la base de données initiale à créer
     ports:
       - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
     networks:
       - taskora-net # Attache PostgreSQL au réseau personnalisé 'taskora-net'
 
@@ -31,3 +33,5 @@ services:
 networks:
   taskora-net:
     driver: bridge # Driver réseau permettant aux conteneurs de communiquer entre eux
+volumes:
+  pgdata:

@@ -47,7 +47,7 @@ fi
 
 # Rebuild
 echo "🛠 Rebuild des images sans cache..."
-docker compose build --no-cache > /dev/null 2>&1
+docker compose build --no-cache # > /dev/null 2>&1
 
 # Lancement
 echo "🚀 Lancement des services en mode détaché..."
