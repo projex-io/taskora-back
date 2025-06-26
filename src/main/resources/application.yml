@@ -8,6 +8,7 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
   jpa:
-    show-sql: false
     properties:
       hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yml  # chemin vers fichier de changements

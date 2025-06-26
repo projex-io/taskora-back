@@ -25,6 +25,7 @@ dependencies {
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin") // Gérer JSON avec Kotlin
 	implementation("org.jetbrains.kotlin:kotlin-reflect") // Réflexion pour Kotlin
 	implementation("org.postgresql:postgresql:42.7.7") // Driver PostgreSQL
+	implementation("org.liquibase:liquibase-core:4.23.2")
 
 	// Test dependencies
 	testImplementation("org.testcontainers:testcontainers:1.19.7") // Testcontainers pour dockerized tests
