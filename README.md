@@ -82,3 +82,5 @@ when a PR is successfully merge, workflows create automatically :
 make release(-minor|-major)
 ```
 A release with appropriate bump version will be created and the current draft is deleted. 
+
+JUSTATEST
