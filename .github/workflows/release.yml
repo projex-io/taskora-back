@@ -10,5 +10,5 @@ permissions:
   packages: write
 
 jobs:
-  publish_release:
+  call_reusable_workflow:
     uses: aassalax/workflows/.github/workflows/release.yml@main
