@@ -11,4 +11,4 @@ permissions:
 
 jobs:
   publish_release:
-    uses: projex-io/workflows-kt/.github/workflows/release.yml@main
+    uses: aassalax/workflows/.github/worflows/kt/release.yml@main

@@ -12,4 +12,4 @@ permissions:
 
 jobs:
   build:
-    uses: projex-io/workflows-kt/.github/workflows/build-and-publish.yml@main
+    uses: aassalax/workflows/.github/worflows/kt/build-and-publish.yml@main
