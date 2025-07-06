@@ -11,4 +11,4 @@ permissions:
 
 jobs:
   publish_release:
-    uses: aassalax/workflows/.github/worflows/kt/release.yml@main
+    uses: aassalax/workflows/.github/workflows/kt/release.yml@main

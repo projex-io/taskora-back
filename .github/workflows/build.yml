@@ -12,4 +12,4 @@ permissions:
 
 jobs:
   build:
-    uses: aassalax/workflows/.github/worflows/kt/build-and-publish.yml@main
+    uses: aassalax/workflows/.github/workflows/kt/build-and-publish.yml@main
