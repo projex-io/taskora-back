@@ -10,14 +10,3 @@ jobs:
     uses: aassalax/workflows/.github/workflows/auto-create-pr.yml@main
     secrets:
       PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          # Récupérer toutes les branches et l'historique complet
-          fetch-depth: 0
-
-      - name: Ensure branch context
-        run: |
-          echo "Checking out to the branch that triggered the event"
-          git checkout ${{ github.ref_name }}
