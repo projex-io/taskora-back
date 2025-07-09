@@ -7,3 +7,11 @@ spring:
     password: postgres
   jpa:
     show-sql: true
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /api/docs
+    operations-sorter: method
