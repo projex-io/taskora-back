@@ -3,12 +3,16 @@ name: Publish Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'stable'
+      - 'release'
 
 permissions:
   contents: write
   packages: write
+  pull-requests: read
 
 jobs:
   call_reusable_workflow:
-    uses: aassalax/workflows/.github/workflows/release.yml@main
+    uses: aassalax/workflows/.github/workflows/release-kt.yml@main
+    secrets:
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
